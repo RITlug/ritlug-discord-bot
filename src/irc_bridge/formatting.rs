@@ -7,16 +7,21 @@ enum Format {
 pub fn irc_to_dc(msg: &str) -> String {
     let mut new_msg = String::new();
 
+    // Store formats in a stack so they can be closed
+    // in the correct order
     let mut formats = vec![];
+    // Are we in a code block?
     let mut code = false;
 
     let mut chars = msg.chars().peekable();
     while let Some(c) = chars.next() {
         match c {
+            // Escape characters that Discord uses for formatting
             '\\' => new_msg += "\\\\",
             '*' => new_msg += "\\*",
             '_' => new_msg += "\\_",
             '~' => new_msg += "\\~",
+            // Code block (disable formatting changes)
             '`' => {
                 new_msg.push('`');
                 code = !code;
@@ -69,6 +74,7 @@ pub fn irc_to_dc(msg: &str) -> String {
             c => new_msg.push(c)
         }
     }
+    // Close remaining open formats
     if code {
         new_msg.push('`');
     }

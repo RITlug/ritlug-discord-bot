@@ -1,5 +1,3 @@
-mod irc_bridge;
-
 use std::sync;
 use std::sync::atomic::AtomicBool;
 
@@ -7,6 +5,8 @@ use bimap::BiMap;
 use irc::client::prelude::Config as IrcConfig;
 use irc_bridge::BridgeMessage;
 use poise::serenity_prelude::{self, Mutex, json};
+
+mod irc_bridge;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
@@ -47,11 +47,13 @@ pub async fn event_listener(
                     sync::Arc::new(ctx.clone()), 
                     user_data.irc_config.clone(), 
                     user_data.irc_channel_map.clone());
+                // Store tx so we can send to it when we get messages later
                 *user_data.irc_tx.lock().await = Some(tx);
             }
         },
         poise::Event::Message { new_message } => {
             if !new_message.author.bot {
+                // Check if channel is bridged to IRC
                 let channel = user_data.irc_channel_map.get_by_left(new_message.channel_id.as_u64());
                 if let Some(channel) = channel {
                     let msg = BridgeMessage {
@@ -94,28 +96,10 @@ async fn main() {
         irc_config: IrcConfig::default(),
     };
 
+    // If the `irc` object exists in the config 
+    // file, load IRC config into the user data object
     if !config["irc"].is_null() {
-        data.irc_running_bridge = false.into();
-        let channels = config["irc"]["channels"]
-            .as_object()
-            .expect("config.json: `irc.channels` must exist if `irc` exists");
-        for (k, v) in channels {
-            let irc_channel = k.to_owned();
-            let dc_channel = v.as_u64().expect("config.json: values in `irc.channels` must be integers");
-            data.irc_channel_map.insert(dc_channel, irc_channel.clone());
-            data.irc_config.channels.push(irc_channel);
-        }
-        data.irc_config.server = Some(config["irc"]["server"]
-            .as_str()
-            .expect("config.json: `irc.server` must exist if `irc` exists")
-            .to_owned()
-        );
-        data.irc_config.nickname = Some(config["irc"]["nickname"]
-            .as_str()
-            .expect("config.json: `irc.nickname` must exist if `irc` exists")
-            .to_owned()
-        );
-        data.irc_config.use_tls = config["irc"]["use_tls"].as_bool();
+        irc_bridge::load_data_from_config(&mut data, &config["irc"]);
     }
 
     let framework = poise::Framework::builder()

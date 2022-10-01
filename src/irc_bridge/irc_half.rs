@@ -6,6 +6,7 @@ use crate::Error;
 
 use super::BridgeMessage;
 
+// Run the IRC client
 pub async fn run_bridge(
     config: Config, 
     mut rx: mpsc::Receiver<BridgeMessage>, 
@@ -18,6 +19,7 @@ pub async fn run_bridge(
     let mut stream = client.stream()?;
     loop {
         tokio::select! {
+            // New message from the IRC server
             msg = stream.next() 
             => if let Some(msg) = msg.transpose()? {
                 if let Command::PRIVMSG(channel, message) = msg.command {
@@ -33,6 +35,7 @@ pub async fn run_bridge(
             } else {
                 break
             },
+            // Message from the bridge that needs to be sent to IRC
             bridge_msg = rx.recv() => if let Some(msg) = bridge_msg {
                 let content = format!("<{}> {}", msg.author, msg.message);
                 client.send(Command::PRIVMSG(msg.channel, content))?;
@@ -44,5 +47,3 @@ pub async fn run_bridge(
     println!("IRC bridge closed");
     Ok(()) 
 }
-/*
- */
