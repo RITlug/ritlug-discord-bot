@@ -7,6 +7,7 @@ use tokio::sync::mpsc;
 
 mod irc_half;
 mod discord_half;
+mod formatting;
 
 
 #[derive(Debug)]

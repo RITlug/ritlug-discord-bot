@@ -5,7 +5,7 @@ use poise::serenity_prelude::{Context, ChannelId};
 
 use crate::Error;
 
-use super::Receiver;
+use super::{Receiver, formatting::irc_to_dc};
 
 pub async fn run_bridge(
     ctx: Arc<Context>,
@@ -15,7 +15,7 @@ pub async fn run_bridge(
     while let Some(msg) = rx.recv().await {
         let channel = channel_mapping.get_by_right(&msg.channel);
         if let Some(channel) = channel {
-            let message = format!("<{}> {}", msg.author, msg.message);
+            let message = format!("<{}> {}", msg.author, irc_to_dc(&msg.message));
             ChannelId::from(*channel).say(&ctx.http, message).await?;
         }
     }
