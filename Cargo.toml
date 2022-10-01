@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 poise = "0.3.0"
 dotenv = "0.15"
+irc = "0.15"
+bimap = "0.6"
 
 [dependencies.tokio]
 version = "1.0"
