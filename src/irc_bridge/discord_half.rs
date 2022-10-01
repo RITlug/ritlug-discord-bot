@@ -15,8 +15,20 @@ pub async fn run_bridge(
     while let Some(msg) = rx.recv().await {
         let channel = channel_mapping.get_by_right(&msg.channel);
         if let Some(channel) = channel {
-            let message = format!("<{}> {}", msg.author, irc_to_dc(&msg.message));
-            ChannelId::from(*channel).say(&ctx.http, message).await?;
+            let channel = ChannelId::from(*channel);
+            let message = irc_to_dc(&msg.message);
+            let webhooks = channel.webhooks(&ctx.http).await.unwrap();
+            println!("{}", webhooks.len());
+            if webhooks.len() > 0 {
+                webhooks[0].execute(&ctx.http, false, |hook| {
+                    hook.username(msg.author).content(message)
+                }).await?;
+            } else {
+                let webhook = channel.create_webhook(&ctx.http, "IRC").await?;
+                webhook.execute(&ctx.http, false, |hook| {
+                    hook.username(msg.author).content(message)
+                }).await?;
+            }
         }
     }
     Ok(())

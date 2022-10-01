@@ -10,8 +10,6 @@ pub fn irc_to_dc(msg: &str) -> String {
     let mut formats = vec![];
     let mut code = false;
 
-    println!("{:?}", msg);
-
     let mut chars = msg.chars().peekable();
     while let Some(c) = chars.next() {
         match c {
@@ -81,10 +79,5 @@ pub fn irc_to_dc(msg: &str) -> String {
             Format::Underline => new_msg += "__",
         }
     }
-    println!("{:?}", new_msg);
     new_msg
-}
-
-pub fn dc_to_irc() {
-
 }
