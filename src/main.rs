@@ -1,4 +1,4 @@
-use poise::serenity_prelude;
+use poise::serenity_prelude::{self, json};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
@@ -7,6 +7,7 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 pub struct Data {}
 
 use poise::serenity_prelude::{Activity, OnlineStatus};
+use tokio::io::AsyncReadExt;
 
 pub async fn event_listener(
     _ctx: &serenity_prelude::Context,
@@ -35,7 +36,13 @@ pub async fn event_listener(
 
 #[tokio::main]
 async fn main() {
-    let token = "token";
+    dotenv::dotenv().ok();
+    let token = std::env::var("BOT_TOKEN").expect("Could not find BOT_TOKEN in environment variables");
+
+    let mut config_file = tokio::fs::File::open("config.json").await.expect("Could not open config.json");
+    let mut buf = String::new();
+    config_file.read_to_string(&mut buf).await.expect("Could not read config.json");
+    let _config: json::Value = json::prelude::from_str(&buf).expect("config.json contained invalid JSON");
     
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
