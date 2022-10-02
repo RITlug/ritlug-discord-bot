@@ -76,5 +76,5 @@ pub fn run(
             println!("Error in Discord bridge: {}", e);
         }
     });
-    return tx_di;
+    tx_di
 }
