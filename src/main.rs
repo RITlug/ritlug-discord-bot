@@ -17,6 +17,7 @@ pub struct Data {
     irc_tx: Mutex<Option<irc_bridge::Sender>>,
     irc_channel_map: BiMap<u64, String>,
     irc_config: IrcConfig,
+    irc_webhook_avatar: String,
 }
 
 use poise::serenity_prelude::{Activity, OnlineStatus};
@@ -46,7 +47,9 @@ pub async fn event_listener(
                 let tx = irc_bridge::run(
                     sync::Arc::new(ctx.clone()), 
                     user_data.irc_config.clone(), 
-                    user_data.irc_channel_map.clone());
+                    user_data.irc_channel_map.clone(),
+                    user_data.irc_webhook_avatar.clone(),
+                );
                 // Store tx so we can send to it when we get messages later
                 *user_data.irc_tx.lock().await = Some(tx);
             }
@@ -94,6 +97,7 @@ async fn main() {
         irc_running_bridge: true.into(), // set to `true` to disable bridge by default
         irc_channel_map: BiMap::new(),
         irc_config: IrcConfig::default(),
+        irc_webhook_avatar: "".to_owned(),
     };
 
     // If the `irc` object exists in the config 

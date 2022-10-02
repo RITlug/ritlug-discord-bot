@@ -9,7 +9,6 @@ use crate::Data;
 
 mod irc_half;
 mod discord_half;
-mod formatting;
 
 // A message crossing the bridge
 #[derive(Debug)]
@@ -49,6 +48,8 @@ pub fn load_data_from_config(data: &mut Data, irc_config: &json::Value) {
         .expect("config.json: `irc.nickname` must exist if `irc` exists")
         .to_owned()
     );
+    // discord avatar URL
+    data.irc_webhook_avatar = irc_config["avatar"].as_str().unwrap_or("").to_owned();
     // enable/disable TLS (default: enabled)
     data.irc_config.use_tls = irc_config["use_tls"].as_bool();
 }
@@ -60,7 +61,8 @@ pub fn load_data_from_config(data: &mut Data, irc_config: &json::Value) {
 pub fn run(
     ctx: Arc<Context>, 
     irc_config: Config, 
-    channel_mapping: BiMap<u64, String>
+    channel_mapping: BiMap<u64, String>,
+    avatar_url: String,
 ) -> Sender {
     // channel from discord to irc
     let (tx_di, rx_di) = mpsc::channel(64);
@@ -72,7 +74,7 @@ pub fn run(
         }
     });
     tokio::spawn(async {
-        if let Err(e) = discord_half::run_bridge(ctx, rx_id, channel_mapping).await {
+        if let Err(e) = discord_half::run_bridge(ctx, rx_id, channel_mapping, avatar_url).await {
             println!("Error in Discord bridge: {}", e);
         }
     });
