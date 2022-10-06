@@ -7,10 +7,11 @@ fn get_connection() -> Result<rusqlite::Connection, rusqlite::Error> {
 pub fn init() -> Result<()> {
   let sql = "
     CREATE TABLE IF NOT EXISTS role_data (
-    guild_id BIGINT NOT NULL,
-    page INT NOT NULL,
-    data TEXT NOT NULL,
-    PRIMARY KEY (guild_id,page)
+      guild_id BIGINT NOT NULL,
+      page INT NOT NULL,
+      data TEXT NOT NULL,
+      PRIMARY KEY (guild_id,page)
+    );
   ";
   let conn = get_connection()?;
   conn.execute(sql, ())?;
