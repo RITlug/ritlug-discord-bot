@@ -113,7 +113,7 @@ pub async fn deleterolepage(
   let guild_id = util::get_guild_id(&ctx).await?;
   let page_count = database::get_page_amount(&guild_id)?.unwrap_or(0);
 
-  if page_count < page {
+  if page_count < page || page < 1{
     util::error(&ctx, ":x: That page doesnt exist").await?;
     return Ok(())
   }
