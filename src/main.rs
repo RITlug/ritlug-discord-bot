@@ -45,7 +45,7 @@ async fn register(ctx: Context<'_>) -> Result<(), Error> {
 #[tokio::main]
 async fn main() {
 
-    database::init();
+    database::init().unwrap();
 
     let token = "MTAwOTk2MjQ1NzQzMjg1MDQzMg.GAhG-p.Q7FGBveX4a4PFPW96xgclUV-1LoEN9I45Lko_U";
     
