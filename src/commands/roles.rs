@@ -87,3 +87,40 @@ pub async fn deleterole(
 
     Ok(())
 }
+
+#[poise::command(slash_command)]
+pub async fn addrolepage(
+    ctx: Context<'_>,
+    #[description = "Title of the page"] title: String,
+    #[description = "Description of the page"] description: String,
+) -> Result<(), Error> {
+  let guild_id = util::get_guild_id(&ctx).await?;
+  let page_count = database::get_page_amount(&guild_id)?.unwrap_or(0);
+  let json = format!("{{\"title\":\"{}\",\"description\":\"{}\",\"roles\":[]}}", &title, &description);
+  
+  database::set_page(&guild_id, &(page_count+1), json.as_str())?;
+
+  ctx.send(|b| b.content(format!(":white_check_mark: Sucessfully added page {} as page number {}", &title, &(page_count+1)))).await?;
+  
+  Ok(())
+}
+
+#[poise::command(slash_command)]
+pub async fn deleterolepage(
+    ctx: Context<'_>,
+    #[description = "Page to delete"] page: u64,
+) -> Result<(), Error> {
+  let guild_id = util::get_guild_id(&ctx).await?;
+  let page_count = database::get_page_amount(&guild_id)?.unwrap_or(0);
+
+  if page_count < page {
+    util::error(&ctx, ":x: That page doesnt exist").await?;
+    return Ok(())
+  }
+  
+  database::delete_page(&guild_id, &page)?;
+
+  ctx.send(|b| b.content(format!(":white_check_mark: Sucessfully deleted page number {}", &page))).await?;
+  
+  Ok(())
+}

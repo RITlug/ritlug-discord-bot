@@ -20,7 +20,7 @@ pub fn init() -> Result<()> {
 
 struct Row {
   guild_id: u64,
-  page: u32,
+  page: u64,
   data: String
 }
 
@@ -57,7 +57,7 @@ pub fn delete_page(guild_id: &u64, page: &u64) -> Result<()> {
   Ok(())
 }
 
-pub fn get_page_amount(guild_id: &u64) -> Result<Option<u32>> {
+pub fn get_page_amount(guild_id: &u64) -> Result<Option<u64>> {
   let sql = "SELECT * FROM role_data WHERE guild_id = ? ORDER BY page DESC LIMIT 1;";
   let conn = get_connection()?;
   let mut stmt = conn.prepare(sql)?;

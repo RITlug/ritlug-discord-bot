@@ -4,3 +4,5 @@ pub use ping::ping;
 mod roles;
 pub use roles::addrole;
 pub use roles::deleterole;
+pub use roles::addrolepage;
+pub use roles::deleterolepage;
