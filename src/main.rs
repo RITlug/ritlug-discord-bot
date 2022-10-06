@@ -50,12 +50,14 @@ async fn main() {
 
     let token = "I will no longer push a token to the repo";
     
+    
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![
                 register(),
                 commands::ping(),
-                commands::addrole()
+                commands::addrole(),
+                commands::deleterole()
             ],
             listener: |ctx, event, framework, user_data| {
                 Box::pin(event_listener(
