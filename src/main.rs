@@ -2,6 +2,7 @@ use poise::serenity_prelude;
 
 mod commands;
 mod database;
+mod util;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
@@ -47,7 +48,8 @@ async fn main() {
 
     database::init().unwrap();
 
-    let token = "I will no longer push a token to the repo";
+    // let token = "I will no longer push a token to the repo";
+    let token = "MTAwOTk2MjQ1NzQzMjg1MDQzMg.G2Nx9u.4PxHslLdvZePAlbpYM82skDaJhHoAmMB7wpF64";
     
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
