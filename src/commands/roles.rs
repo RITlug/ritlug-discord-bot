@@ -1,4 +1,5 @@
 use poise::serenity_prelude as serenity;
+use serde_json::json;
 
 use crate::{Context, Error};
 
@@ -18,13 +19,34 @@ pub async fn addrole(
     let guild_id = util::get_guild_id(&ctx).await?;
     
     let data = database::get_page(&guild_id, &page)?;
-    
-    let response;
+    let mut json: serde_json::Value;
     match data {
-      Some(x) => response = format!("page {} data is: {}", page, x),
-      None => response = format!("page {} not found", page)
+      None => {
+        util::error(&ctx, format!(":x: Page {} does not exist", guild_id).as_str()).await?;
+        return Ok(());
+      },
+      Some(x) => json = serde_json::from_str(x.as_str())?
     }
 
-    ctx.say(response).await?;
+    let mut roles = json["roles"].as_array().unwrap_or(&Vec::new()).to_owned();
+    for value in &roles {
+      match value.as_u64() {
+        None => continue,
+        Some(id) => {
+          if id == role.id.0 {
+            util::error(&ctx, ":x: Role is already on page").await?;
+            return Ok(())
+          }
+        }
+      }
+    }
+
+    roles.push(serde_json::Value::from(role.id.0));
+    json["roles"] = json!(roles);
+
+    database::set_page(&guild_id, &page, json.to_string().as_str())?;
+
+    ctx.send(|b| b.content(format!(":white_check_mark: Sucessfully added role <@&{}> to page {}", &role.id.0, &page))).await?;
+
     Ok(())
 }

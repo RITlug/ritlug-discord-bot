@@ -48,8 +48,7 @@ async fn main() {
 
     database::init().unwrap();
 
-    // let token = "I will no longer push a token to the repo";
-    let token = "MTAwOTk2MjQ1NzQzMjg1MDQzMg.G2Nx9u.4PxHslLdvZePAlbpYM82skDaJhHoAmMB7wpF64";
+    let token = "I will no longer push a token to the repo";
     
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {

@@ -41,23 +41,23 @@ pub fn get_page(guild_id: &u64, page: &u64) -> Result<Option<String>> {
   Ok(None)
 }
 
-pub fn set_page(guild_id: &i64, page: &u32, data: &str) -> Result<()> {
+pub fn set_page(guild_id: &u64, page: &u64, data: &str) -> Result<()> {
   let sql = "REPLACE INTO role_data (guild_id, page, data) VALUES(?,?,?)";
   let conn = get_connection()?;
-  conn.execute(sql, (guild_id, page, data))?;
+  conn.execute(sql, (&guild_id, &page, &data))?;
   Ok(())
 }
 
-pub fn delete_page(guild_id: &i64, page: &i64) -> Result<()> {
+pub fn delete_page(guild_id: &u64, page: &u64) -> Result<()> {
   let sql = "DELETE FROM role_data WHERE guild_id = ? AND page = ?;";
   let conn = get_connection()?;
-  conn.execute(sql, (guild_id, page))?;
+  conn.execute(sql, (&guild_id, &page))?;
   let sql2 = "UPDATE role_data SET page = page - 1 WHERE guild_id = ? AND page > ?;";
-  conn.execute(sql2, (guild_id, page))?;
+  conn.execute(sql2, (&guild_id, &page))?;
   Ok(())
 }
 
-pub fn get_page_amount(guild_id: &i64) -> Result<Option<u32>> {
+pub fn get_page_amount(guild_id: &u64) -> Result<Option<u32>> {
   let sql = "SELECT * FROM role_data WHERE guild_id = ? ORDER BY page DESC LIMIT 1;";
   let conn = get_connection()?;
   let mut stmt = conn.prepare(sql)?;
