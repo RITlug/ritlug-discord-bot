@@ -8,7 +8,9 @@
 # Used for build environments, not for deployment.
 # This includes the rust compiler, which probably isn't needed
 # in a production environment.
-FROM rust:1.64 as builder
+# Need to pull from the buster tag since the production environment
+# also uses buster.  If not, glibc errors appear at runtime.
+FROM rust:1.64-buster as builder
 WORKDIR /usr/src/ritlug
 
 # Copy only the things needed to compile into
