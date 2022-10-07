@@ -1,4 +1,10 @@
-use poise::serenity_prelude as serenity;
+use std::collections::HashMap;
+use std::option;
+
+use poise::CreateReply;
+use poise::futures_util::StreamExt;
+use poise::serenity_prelude::{self as serenity, message_collector, RoleId, Role};
+use serenity::{CreateEmbedAuthor};
 use serde_json::json;
 
 use crate::{Context, Error};
@@ -18,7 +24,7 @@ pub async fn addrole(
     }
     let guild_id = util::get_guild_id(&ctx).await?;
     
-    let data = database::get_page(&guild_id, &page)?;
+    let data = database::roles::get_page(&guild_id, &page)?;
     let mut json: serde_json::Value;
     match data {
       None => {
@@ -40,7 +46,7 @@ pub async fn addrole(
     let roles = ids.iter().map(|value| serde_json::Value::from(value.to_owned())).collect::<Vec<_>>();
     json["roles"] = json!(roles);
 
-    database::set_page(&guild_id, &page, json.to_string().as_str())?;
+    database::roles::set_page(&guild_id, &page, json.to_string().as_str())?;
 
     ctx.send(|b| b.content(format!(":white_check_mark: Sucessfully added role <@&{}> to page {}", &role.id.0, &page))).await?;
 
@@ -59,7 +65,7 @@ pub async fn deleterole(
     }
     let guild_id = util::get_guild_id(&ctx).await?;
     
-    let data = database::get_page(&guild_id, &page)?;
+    let data = database::roles::get_page(&guild_id, &page)?;
     let mut json: serde_json::Value;
     match data {
       None => {
@@ -81,7 +87,7 @@ pub async fn deleterole(
     let roles = ids.iter().map(|value| serde_json::Value::from(value.to_owned())).collect::<Vec<_>>();
     json["roles"] = json!(roles);
 
-    database::set_page(&guild_id, &page, json.to_string().as_str())?;
+    database::roles::set_page(&guild_id, &page, json.to_string().as_str())?;
 
     ctx.send(|b| b.content(format!(":white_check_mark: Sucessfully removed role <@&{}> from page {}", &role.id.0, &page))).await?;
 
@@ -95,10 +101,10 @@ pub async fn addrolepage(
     #[description = "Description of the page"] description: String,
 ) -> Result<(), Error> {
   let guild_id = util::get_guild_id(&ctx).await?;
-  let page_count = database::get_page_amount(&guild_id)?.unwrap_or(0);
+  let page_count = database::roles::get_page_amount(&guild_id)?.unwrap_or(0);
   let json = format!("{{\"title\":\"{}\",\"description\":\"{}\",\"roles\":[]}}", &title, &description);
   
-  database::set_page(&guild_id, &(page_count+1), json.as_str())?;
+  database::roles::set_page(&guild_id, &(page_count+1), json.as_str())?;
 
   ctx.send(|b| b.content(format!(":white_check_mark: Sucessfully added page {} as page number {}", &title, &(page_count+1)))).await?;
   
@@ -111,16 +117,136 @@ pub async fn deleterolepage(
     #[description = "Page to delete"] page: u64,
 ) -> Result<(), Error> {
   let guild_id = util::get_guild_id(&ctx).await?;
-  let page_count = database::get_page_amount(&guild_id)?.unwrap_or(0);
+  let page_count = database::roles::get_page_amount(&guild_id)?.unwrap_or(0);
 
   if page_count < page || page < 1{
     util::error(&ctx, ":x: That page doesnt exist").await?;
     return Ok(())
   }
   
-  database::delete_page(&guild_id, &page)?;
+  database::roles::delete_page(&guild_id, &page)?;
 
   ctx.send(|b| b.content(format!(":white_check_mark: Sucessfully deleted page number {}", &page))).await?;
   
   Ok(())
 }
+
+#[poise::command(slash_command)]
+pub async fn roles(
+    ctx: Context<'_>
+) -> Result<(), Error> {
+  let guild_id = util::get_guild_id(&ctx).await?;
+  let page_count = database::roles::get_page_amount(&guild_id)?.unwrap_or(0);
+
+  if page_count < 1 {
+    util::error(&ctx, ":x: Self roles arent enabled on this server").await?;
+    return Ok(())
+  }
+
+  let page_number = 1;
+  let content = get_role_embed(&ctx, &guild_id, &page_number, &page_count)?;
+  let reply = ctx.send(|b| { b.clone_from(&content); return b; }).await?;
+  let message = reply.message().await?;
+  let mut collector = message.await_component_interactions(ctx.discord()).author_id(ctx.author().id).build();
+
+  while let Some(interaction) = collector.next().await {
+    match interaction.data.custom_id.as_str() {
+      "previous" => {
+        let page_count = database::roles::get_page_amount(&guild_id)?.unwrap_or(0);
+        let mut page_number = interaction.message.embeds[0].footer.as_ref().unwrap().text[5..6].parse::<u64>().unwrap() - 1;
+        if page_number < 1 { page_number = page_count; }
+        if page_number > page_count { page_number = 1 }
+        let content = get_role_embed(&ctx, &guild_id, &page_number, &page_count)?;
+        reply.edit(ctx, |b| { b.clone_from(&content); return b; }).await?;
+        // interaction.as_ref().to_owned().message.edit(ctx.discord(), |b| b.set_embeds(content.embeds).set_components(content.components.unwrap())).await?;
+      }
+      "next" => {
+        let page_count = database::roles::get_page_amount(&guild_id)?.unwrap_or(0);
+        let mut page_number = interaction.message.embeds[0].footer.as_ref().unwrap().text[5..6].parse::<u64>().unwrap() + 1;
+        if page_number < 1 { page_number = page_count; }
+        if page_number > page_count { page_number = 1 }
+        let content = get_role_embed(&ctx, &guild_id, &page_number, &page_count)?;
+        reply.edit(ctx, |b| { b.clone_from(&content); return b; }).await?;
+        // interaction.as_ref().to_owned().message.edit(ctx.discord(), |b| b.set_embeds(content.embeds).set_components(content.components.unwrap())).await?;
+      }
+      "exit" => {
+        interaction.message.delete(ctx.discord()).await?;
+      }
+      _ => {}
+    }
+  }
+  
+  Ok(())
+}
+
+fn get_role_embed<'a>(ctx: &'a Context<'a>, &guild_id: &'a u64, page_number: &'a u64, page_count: &'a u64) -> Result<CreateReply<'a>, Error> {
+
+  let binding = database::roles::get_page(&guild_id, &page_number)?.unwrap();
+  let data = binding.as_str();
+
+  let json: serde_json::Value = serde_json::from_str(data)?;
+  let ids = json["roles"].as_array().unwrap_or(&Vec::new()).to_owned().iter().map(|value| value.as_u64()).flatten().collect::<Vec<_>>();
+  let title = json["title"].as_str().unwrap();
+  let mut description = json["description"].as_str().unwrap().to_string();
+
+  let lookup = ctx.guild().unwrap().roles;
+  let roles = ids.iter().map(|&id| lookup.get(&serenity::RoleId(id))).flatten().collect::<Vec<_>>();
+
+  let mut options:Vec<serenity::CreateSelectMenuOption> = Vec::new();
+  description.push_str("\n");
+  let mut i = 1;
+  for &role in &roles {
+    options.push(serenity::CreateSelectMenuOption::new(
+      role.name.as_str(),
+      role.id.0
+    ));
+    description.push_str(format!("\n`{}`: <@&{}>", &i, &role.id.0).as_str());
+    i += 1;
+  }
+
+  if options.len() < 1 {
+    options.push(serenity::CreateSelectMenuOption::new(
+      "There are no roles on this page",
+      0
+    ));
+  }
+
+  let reply = CreateReply::default()
+    .embed(|b| b
+      .author(|b| b
+        .name("Role Selection") 
+      )
+      .title(title)
+      .description(description)
+      .footer(|b| b
+        .text(format!("Page {}/{}", &page_number, &page_count))
+      )
+    ).components(|b| b
+      .create_action_row(|b| b
+        .create_button(|b| b
+          .custom_id("previous")
+          .label("Previous")
+          .style(serenity::ButtonStyle::Secondary)
+        )
+        .create_button(|b| b
+          .custom_id("next")
+          .label("Next")
+          .style(serenity::ButtonStyle::Secondary)
+        )
+        .create_button(|b| b
+          .custom_id("exit")
+          .label("Exit")
+          .style(serenity::ButtonStyle::Danger)
+        )
+      ).create_action_row(|b| b
+        .create_select_menu(|b| b
+          .custom_id("selection")
+          .placeholder("Select a role to add")
+          .options(|b| b.set_options(options))
+        )
+      )
+    ).to_owned();
+
+  Ok(reply)
+
+} 

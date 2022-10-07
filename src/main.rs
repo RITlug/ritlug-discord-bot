@@ -58,7 +58,8 @@ async fn main() {
                 commands::addrole(),
                 commands::deleterole(),
                 commands::addrolepage(),
-                commands::deleterolepage()
+                commands::deleterolepage(),
+                commands::roles()
             ],
             listener: |ctx, event, framework, user_data| {
                 Box::pin(event_listener(

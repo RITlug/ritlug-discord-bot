@@ -71,5 +71,5 @@ pub fn get_page_amount(guild_id: &u64) -> Result<Option<u64>> {
   for row in iter {
     return Ok(Some(row?.page))
   }
-  Ok(None)
+  Ok(Some(0))
 }
