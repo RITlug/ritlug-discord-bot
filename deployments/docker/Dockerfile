@@ -5,6 +5,8 @@
 # run the following shell command:
 # docker build -f deployments/docker/Dockerfile -t ritlug-discord-bot .
 
+######## Build Environment ########
+
 # Used for build environments, not for deployment.
 # This includes the rust compiler, which probably isn't needed
 # in a production environment.
@@ -20,6 +22,8 @@ WORKDIR /usr/src/ritlug
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./src ./src
 RUN cargo install --path .
+
+######## Production Environment ########
 
 # Using Debian's slimmed-down version of buster since we need
 # to install additional dependencies, and that's easiest to do in a distro
