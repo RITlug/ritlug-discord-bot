@@ -94,6 +94,8 @@ async fn register(ctx: Context<'_>) -> Result<(), Error> {
 
 #[tokio::main]
 async fn main() {
+
+    database::init().unwrap();
     
     dotenv::dotenv().ok();
     let token = std::env::var("BOT_TOKEN").expect("Could not find BOT_TOKEN in environment variables");
@@ -111,7 +113,7 @@ async fn main() {
         irc_webhook_avatar: "".to_owned(),
     };
 
-    database::init();
+    database::init().expect("Failed to load database!");
 
     // If the `irc` object exists in the config 
     // file, load IRC config into the user data object
@@ -138,8 +140,11 @@ async fn main() {
             ..Default::default()
         })
         .token(token)
-        .intents(serenity_prelude::GatewayIntents::MESSAGE_CONTENT | serenity_prelude::GatewayIntents::GUILD_MESSAGES)
-        .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { Ok(data) }));
+        .intents(
+            serenity_prelude::GatewayIntents::MESSAGE_CONTENT | 
+            serenity_prelude::GatewayIntents::GUILD_MESSAGES | 
+            serenity_prelude::GatewayIntents::non_privileged()
+        ).user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { Ok(data) }));
 
     framework.run().await.unwrap();
 }
