@@ -8,10 +8,15 @@ use poise::serenity_prelude::{self, Mutex, json};
 
 mod irc_bridge;
 
+mod commands;
+mod database;
+mod util;
+
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
 // User data, which is stored and accessible in all command invocations
+#[derive(Debug)]
 pub struct Data {
     irc_running_bridge: AtomicBool,
     irc_tx: Mutex<Option<irc_bridge::Sender>>,
@@ -81,9 +86,17 @@ pub async fn event_listener(
     Ok(())
 }
 
+#[poise::command(prefix_command)]
+async fn register(ctx: Context<'_>) -> Result<(), Error> {
+    poise::builtins::register_application_commands_buttons(ctx).await?;
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() {
+
+    database::init().unwrap();
+    
     dotenv::dotenv().ok();
     let token = std::env::var("BOT_TOKEN").expect("Could not find BOT_TOKEN in environment variables");
 
@@ -100,6 +113,8 @@ async fn main() {
         irc_webhook_avatar: "".to_owned(),
     };
 
+    database::init().expect("Failed to load database!");
+
     // If the `irc` object exists in the config 
     // file, load IRC config into the user data object
     if !config["irc"].is_null() {
@@ -109,7 +124,13 @@ async fn main() {
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![
-                // Add stuff here
+                register(),
+                commands::ping(),
+                commands::addrole(),
+                commands::deleterole(),
+                commands::addrolepage(),
+                commands::deleterolepage(),
+                commands::roles()
             ],
             listener: |ctx, event, framework, user_data| {
                 Box::pin(event_listener(
@@ -119,8 +140,11 @@ async fn main() {
             ..Default::default()
         })
         .token(token)
-        .intents(serenity_prelude::GatewayIntents::MESSAGE_CONTENT | serenity_prelude::GatewayIntents::GUILD_MESSAGES)
-        .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { Ok(data) }));
+        .intents(
+            serenity_prelude::GatewayIntents::MESSAGE_CONTENT | 
+            serenity_prelude::GatewayIntents::GUILD_MESSAGES | 
+            serenity_prelude::GatewayIntents::non_privileged()
+        ).user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { Ok(data) }));
 
     framework.run().await.unwrap();
 }
