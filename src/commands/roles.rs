@@ -1,10 +1,6 @@
-use std::collections::HashMap;
-use std::option;
-
 use poise::CreateReply;
 use poise::futures_util::StreamExt;
-use poise::serenity_prelude::{self as serenity, message_collector, RoleId, Role};
-use serenity::{CreateEmbedAuthor};
+use poise::serenity_prelude::{self as serenity, InteractionResponseType};
 use serde_json::json;
 
 use crate::{Context, Error};
@@ -157,8 +153,11 @@ pub async fn roles(
         if page_number < 1 { page_number = page_count; }
         if page_number > page_count { page_number = 1 }
         let content = get_role_embed(&ctx, &guild_id, &page_number, &page_count)?;
-        reply.edit(ctx, |b| { b.clone_from(&content); return b; }).await?;
-        // interaction.as_ref().to_owned().message.edit(ctx.discord(), |b| b.set_embeds(content.embeds).set_components(content.components.unwrap())).await?;
+        interaction.create_interaction_response(
+          ctx.discord(), |b| b
+          .kind(InteractionResponseType::UpdateMessage)
+          .interaction_response_data(|b| b.set_embeds(content.embeds).set_components(content.components.unwrap()))
+        ).await?;
       }
       "next" => {
         let page_count = database::roles::get_page_amount(&guild_id)?.unwrap_or(0);
@@ -166,11 +165,47 @@ pub async fn roles(
         if page_number < 1 { page_number = page_count; }
         if page_number > page_count { page_number = 1 }
         let content = get_role_embed(&ctx, &guild_id, &page_number, &page_count)?;
-        reply.edit(ctx, |b| { b.clone_from(&content); return b; }).await?;
-        // interaction.as_ref().to_owned().message.edit(ctx.discord(), |b| b.set_embeds(content.embeds).set_components(content.components.unwrap())).await?;
+        interaction.create_interaction_response(
+          ctx.discord(), |b| b
+          .kind(InteractionResponseType::UpdateMessage)
+          .interaction_response_data(|b| b.set_embeds(content.embeds).set_components(content.components.unwrap()))
+        ).await?;
+      }
+      "selection" => {
+        let id = interaction.data.values[0].as_str().parse::<u64>().ok();
+        match id {
+          None => {
+            interaction.create_interaction_response(ctx.discord(), |b| b
+                  .interaction_response_data(|b| b.ephemeral(true).content(":x: Page empty or invalid role"))).await?;
+          }
+          Some(x) => {
+            let lookup = ctx.guild().unwrap().roles;
+            let role_id = serenity::RoleId(x);
+            let role_option = lookup.get(&role_id);
+            match role_option {
+              None => {
+                interaction.create_interaction_response(ctx.discord(), |b| b
+                  .interaction_response_data(|b| b.ephemeral(true).content(":x: Role no longer exists on server"))).await?;
+              }
+              Some(role) => {
+                let mut member = interaction.as_ref().to_owned().member.unwrap();
+                if member.roles.contains(&role_id) {
+                  member.remove_role(ctx.discord(), &role_id).await?;
+                  interaction.create_interaction_response(ctx.discord(), |b| b
+                    .interaction_response_data(|b| b.ephemeral(true).content(format!(":white_check_mark: Sucessfully removed <@&{}>", role.id.0)))).await?;
+                } else {
+                  member.add_role(ctx.discord(), &role_id).await?;
+                  interaction.create_interaction_response(ctx.discord(), |b| b
+                    .interaction_response_data(|b| b.ephemeral(true).content(format!(":white_check_mark: Sucessfully added <@&{}>", role.id.0)))).await?;
+                }
+              }
+            }
+          }
+        }
       }
       "exit" => {
         interaction.message.delete(ctx.discord()).await?;
+        return Ok(())
       }
       _ => {}
     }
@@ -207,7 +242,7 @@ fn get_role_embed<'a>(ctx: &'a Context<'a>, &guild_id: &'a u64, page_number: &'a
   if options.len() < 1 {
     options.push(serenity::CreateSelectMenuOption::new(
       "There are no roles on this page",
-      0
+      "empty"
     ));
   }
 
