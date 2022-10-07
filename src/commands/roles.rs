@@ -8,7 +8,7 @@ use crate::{Context, Error};
 use crate::database;
 use crate::util;
 
-#[poise::command(slash_command)]
+#[poise::command(slash_command, required_permissions = "MANAGE_ROLES")]
 pub async fn addrole(
     ctx: Context<'_>,
     #[description = "Role to add"] role: serenity::Role,
@@ -49,7 +49,7 @@ pub async fn addrole(
     Ok(())
 }
 
-#[poise::command(slash_command)]
+#[poise::command(slash_command, required_permissions = "MANAGE_ROLES")]
 pub async fn deleterole(
     ctx: Context<'_>,
     #[description = "Role to delete"] role: serenity::Role,
@@ -90,7 +90,7 @@ pub async fn deleterole(
     Ok(())
 }
 
-#[poise::command(slash_command)]
+#[poise::command(slash_command, required_permissions = "MANAGE_ROLES")]
 pub async fn addrolepage(
     ctx: Context<'_>,
     #[description = "Title of the page"] title: String,
@@ -107,7 +107,7 @@ pub async fn addrolepage(
   Ok(())
 }
 
-#[poise::command(slash_command)]
+#[poise::command(slash_command, required_permissions = "MANAGE_ROLES")]
 pub async fn deleterolepage(
     ctx: Context<'_>,
     #[description = "Page to delete"] page: u64,
