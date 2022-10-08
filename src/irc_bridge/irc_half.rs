@@ -38,8 +38,10 @@ pub async fn run_bridge(
             // Message from the bridge that needs to be sent to IRC
             bridge_msg = rx.recv() => if let Some(msg) = bridge_msg {
                 for line in msg.message.split('\n') {
-                    let content = format!("<{}> {}", msg.author, line);
-                    client.send(Command::PRIVMSG(msg.channel.clone(), content))?;
+                    if !line.trim().is_empty() {
+                        let content = format!("<{}> {}", msg.author, line);
+                        client.send(Command::PRIVMSG(msg.channel.clone(), content))?;
+                    }
                 }
             } else {
                 break
