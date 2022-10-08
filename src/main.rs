@@ -64,10 +64,20 @@ pub async fn event_listener(
                 // Check if channel is bridged to IRC
                 let channel = user_data.irc_channel_map.get_by_left(new_message.channel_id.as_u64());
                 if let Some(channel) = channel {
+                    let author = new_message.author
+                        .nick_in(&ctx.http, new_message.guild_id.unwrap())
+                        .await
+                        .unwrap_or_else(|| new_message.author.name.clone());
+                    let mut content = new_message.content.clone();
+                    for attachment in &new_message.attachments {
+                        println!("a {}", attachment.url);
+                        content += "\nAttachment: ";
+                        content += &attachment.url;
+                    }
                     let msg = BridgeMessage {
-                        author: new_message.author.name.clone(),
+                        author,
                         channel: channel.to_owned(),
-                        message: new_message.content.clone(),
+                        message: content
                     };
                     let mut tx = user_data.irc_tx.lock().await;
                     if tx.is_some() {

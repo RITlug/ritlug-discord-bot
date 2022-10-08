@@ -23,3 +23,15 @@ The Discord bot token is either read from the environment variable `BOT_TOKEN`, 
     }
 }
 ```
+
+## Running with Docker
+
+The Docker image can be build with 
+```sh
+$ docker build -f deployments/docker/Dockerfile -t ritlug-discord-bot .
+```
+To run it, use
+```
+$ docker run --mount type=bind,source=/path/on/host/config.json,target=/config.json -e "BOT_TOKEN='token'" --rm -it ritlug-discord-bot
+```
+, replacing `/path/on/host/config.json` with the path to the host's `config.json` file and `token` with the Discord bot token.
