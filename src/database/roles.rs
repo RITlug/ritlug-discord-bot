@@ -19,7 +19,7 @@ pub fn init() -> Result<()> {
 }
 
 struct Row {
-  guild_id: u64,
+  // guild_id: u64,
   page: u64,
   data: String
 }
@@ -30,7 +30,7 @@ pub fn get_page(guild_id: &u64, page: &u64) -> Result<Option<String>> {
   let mut stmt = conn.prepare(sql)?;
   let iter = stmt.query_map([guild_id, page], |row| {
     Ok(Row {
-      guild_id: row.get(0)?,
+      // guild_id: row.get(0)?,
       page: row.get(1)?,
       data: row.get(2)?
     })
@@ -63,7 +63,7 @@ pub fn get_page_amount(guild_id: &u64) -> Result<Option<u64>> {
   let mut stmt = conn.prepare(sql)?;
   let iter = stmt.query_map([guild_id], |row| {
     Ok(Row {
-      guild_id: row.get(0)?,
+      // guild_id: row.get(0)?,
       page: row.get(1)?,
       data: row.get(2)?
     })
