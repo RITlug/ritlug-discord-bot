@@ -11,6 +11,7 @@ mod irc_bridge;
 mod commands;
 mod database;
 mod util;
+mod smtp;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
