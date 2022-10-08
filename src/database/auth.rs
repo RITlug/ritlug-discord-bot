@@ -20,10 +20,10 @@ pub fn init() -> Result<()> {
 }
 
 pub struct Row {
-  guild_id: u64,
-  user_id: u64,
-  email: String,
-  auth_date: u64
+  pub guild_id: u64,
+  pub user_id: u64,
+  pub email: String,
+  pub auth_date: u64
 }
 
 pub fn get_user(guild_id: &u64, user_id: &u64) -> Result<Option<Row>> {
