@@ -64,8 +64,12 @@ pub async fn event_listener(
                 // Check if channel is bridged to IRC
                 let channel = user_data.irc_channel_map.get_by_left(new_message.channel_id.as_u64());
                 if let Some(channel) = channel {
+                    let author = new_message.author
+                        .nick_in(&ctx.http, new_message.guild_id.unwrap())
+                        .await
+                        .unwrap_or(new_message.author.name.clone());
                     let msg = BridgeMessage {
-                        author: new_message.author.name.clone(),
+                        author,
                         channel: channel.to_owned(),
                         message: new_message.content.clone(),
                     };
