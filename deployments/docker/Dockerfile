@@ -37,4 +37,10 @@ RUN apt-get update && \
 
 COPY --from=builder /usr/local/cargo/bin/ritlug /usr/local/bin/ritlug
 
+# Create /data directory to store the database.db and the config.json file
+# This is so the data persists even after container recreation
+RUN mkdir /data
+VOLUME /data
+WORKDIR /data
+
 CMD ["/usr/local/bin/ritlug"]

@@ -27,6 +27,7 @@ pub struct Data {
 
 use poise::serenity_prelude::{Activity, OnlineStatus};
 use tokio::io::AsyncReadExt;
+use std::path::Path;
 
 pub async fn event_listener(
     ctx: &serenity_prelude::Context,
@@ -109,6 +110,10 @@ async fn main() {
     
     dotenv::dotenv().ok();
     let token = std::env::var("BOT_TOKEN").expect("Could not find BOT_TOKEN in environment variables");
+
+    if !Path::new("config.json").exists() {
+        tokio::fs::write("config.json", "{}").await.expect("Unable to create default config.json file! Do i have write permissions?");
+    }
 
     let mut config_file = tokio::fs::File::open("config.json").await.expect("Could not open config.json");
     let mut buf = String::new();
