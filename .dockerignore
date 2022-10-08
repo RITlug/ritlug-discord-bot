@@ -1,0 +1,6 @@
+.git
+.gitignore
+deployments
+target
+Cargo.lock
+
