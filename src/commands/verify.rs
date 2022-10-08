@@ -19,10 +19,10 @@ lazy_static! {
     };
 }
 
-#[poise::command(slash_command, subcommands("confirm"))]
+#[poise::command(slash_command, subcommands("confirm", "enable", "disable"))]
 pub async fn verify(
     ctx: Context<'_>,
-    #[description = "f"] email: String
+    #[description = "Email to send pin to"] email: String
 ) -> Result<(), Error> {
 
     let email_regex = Regex::new(r"^([a-z0-9_+]([a-z0-9_+.]*[a-z0-9_+])?)@([a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,6})").unwrap();
@@ -92,7 +92,7 @@ pub async fn verify(
 #[poise::command(slash_command)]
 pub async fn confirm(
     ctx: Context<'_>,
-    #[description = "f"] pin: i32
+    #[description = "Verify pin sent to your email"] pin: i32
 ) -> Result<(), Error> {
 
     let guild_id = util::get_guild_id(&ctx).await?;
@@ -146,4 +146,39 @@ pub async fn confirm(
     ctx.send(|b| b.ephemeral(true).content(":white_check_mark: You have been sucessfully verified!")).await?;
 
     Ok(())
+}
+
+#[poise::command(slash_command, required_permissions="MANAGE_GUILD")]
+pub async fn enable(
+    ctx: Context<'_>,
+    #[description = "Verify role to set"] role: serenity::Role,
+) -> Result<(), Error> {
+
+    if role.name == "@everyone" || role.name == "@here" {
+        util::error(&ctx, ":x: Role is not allowed").await?;
+        return Ok(())
+    }
+    let guild_id = util::get_guild_id(&ctx).await?;
+
+    database::guild::set_setting(&guild_id, "verify_role", &format!("{}",&role.id.0))?;
+
+    ctx.say(format!(":white_check_mark: Sucessfully enabled verfiy commands! Verfiy role: <@&{}>", &role.id.0)).await?;
+
+    Ok(())
+
+}
+
+#[poise::command(slash_command, required_permissions="MANAGE_GUILD")]
+pub async fn disable(
+    ctx: Context<'_>
+) -> Result<(), Error> {
+
+    let guild_id = util::get_guild_id(&ctx).await?;
+
+    database::guild::delete_setting(&guild_id, "verify_role")?;
+
+    ctx.say(":white_check_mark: Sucessfully disabled verfiy commands").await?;
+
+    Ok(())
+
 }

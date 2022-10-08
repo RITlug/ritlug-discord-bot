@@ -19,8 +19,8 @@ pub fn init() -> Result<()> {
 }
 
 struct Row {
-  guild_id: u64,
-  key: String,
+  // guild_id: u64,
+  // key: String,
   value: String,
 }
 
@@ -30,8 +30,8 @@ pub fn get_setting(guild_id: &u64, key: &str) -> Result<Option<String>> {
   let mut stmt = conn.prepare(sql)?;
   let iter = stmt.query_map((guild_id, key), |row| {
     Ok(Row {
-      guild_id: row.get(0)?,
-      key: row.get(1)?,
+      // guild_id: row.get(0)?,
+      // key: row.get(1)?,
       value: row.get(2)?
     })
   })?;
