@@ -1,6 +1,0 @@
-target
-.git
-.env
-config.json
-database.db
-Cargo.lock
