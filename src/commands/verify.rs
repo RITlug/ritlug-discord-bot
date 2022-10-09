@@ -63,7 +63,7 @@ pub async fn code(
 
     match role_option {
         None => {
-            util::error(&ctx, format!(":x: Verification isnt enabled on this server").as_str()).await?;
+            util::error(&ctx, format!(":x: Verification isn't enabled on this server").as_str()).await?;
             return Ok(());
         }
         Some(role_str) => {
@@ -107,7 +107,7 @@ pub async fn code(
 
     match smtp::send_email(&email, "Discord Authentication", format!("Auth Pin: {}", &pin).as_str()) {
         Ok(_) => { 
-            reply.edit(ctx, |b| b.ephemeral(true).content(":white_check_mark: Sucessfully sent aithentication email")).await?;
+            reply.edit(ctx, |b| b.ephemeral(true).content(":white_check_mark: Sucessfully sent authentication email")).await?;
          }
         Err(e) => {
             reply.edit(ctx, |b| b.ephemeral(true).content(format!(":x: Failed to send email, {}", e.to_string()))).await?;
@@ -129,7 +129,7 @@ pub async fn confirm(
 
     match role_option {
         None => {
-            util::error(&ctx, format!(":x: Verification isnt enabled on this server").as_str()).await?;
+            util::error(&ctx, format!(":x: Verification isn't enabled on this server").as_str()).await?;
             return Ok(());
         }
         Some(role_str) => {
