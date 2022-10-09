@@ -147,7 +147,7 @@ async fn main() {
                 commands::addrolepage(),
                 commands::deleterolepage(),
                 commands::roles(),
-                commands::verify()
+                commands::verify(),
             ],
             listener: |ctx, event, framework, user_data| {
                 Box::pin(event_listener(

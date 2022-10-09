@@ -23,7 +23,9 @@ pub fn send_email(recipient: &str, subject: &str, body: &str) -> Result<(), Erro
 
   match mailer.send(&email) {
       Ok(_) => Ok(()),
-      Err(e) => Err(Box::new(e)),
+      Err(e) => {
+        Err(Box::new(e))
+      },
   }
 
 }

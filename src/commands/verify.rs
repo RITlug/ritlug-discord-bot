@@ -9,18 +9,38 @@ use crate::smtp;
 
 use lazy_static::lazy_static;
 use std::collections::HashMap;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 use rand::Rng;
 
+struct Auth {
+    email: String,
+    pin: i32
+}
+
 lazy_static! {
-    static ref MAP: Mutex<HashMap<u64, i32>> = {
+    static ref MAP: Mutex<HashMap<u64, Auth>> = {
         let map = HashMap::new();
         Mutex::new(map)
     };
 }
 
-#[poise::command(slash_command, subcommands("confirm", "enable", "disable"))]
+#[poise::command(slash_command, subcommands("request", "toggle", "purge"))]
 pub async fn verify(
+    _ctx: Context<'_>,
+) -> Result<(), Error> {
+    Ok(())
+}
+
+#[poise::command(slash_command, subcommands("code", "confirm"))]
+pub async fn request(
+    _ctx: Context<'_>
+) -> Result<(), Error> {
+    Ok(())
+}
+
+#[poise::command(slash_command)]
+pub async fn code(
     ctx: Context<'_>,
     #[description = "Email to send pin to"] email: String
 ) -> Result<(), Error> {
@@ -32,7 +52,7 @@ pub async fn verify(
     }
 
     let handle = "@rit.edu";
-    if email[email.len()-handle.len()-1..email.len()-1].to_string() != handle {
+    if email[email.len()-handle.len()..].to_string() != handle {
         util::error(&ctx, format!(":x: Email must be a valid {} email", handle).as_str()).await?;
         return Ok(());
     }
@@ -68,7 +88,7 @@ pub async fn verify(
 
     let user_id = ctx.author().id.0;
 
-    match database::auth::get_user(&guild_id, &user_id)? {
+    match database::auth::get_email(&guild_id, &email)? {
         None => {},
         Some(row) => {
             if row.email == email {
@@ -80,11 +100,19 @@ pub async fn verify(
 
     let pin = rand::thread_rng().gen_range(10000000..99999999);
     let mut map = MAP.lock().await;
-    map.insert(user_id, pin);
+    let copy = email.clone();
+    map.insert(user_id, Auth{email: copy, pin});
 
-    smtp::send_email(&email, "Discord Authentication", format!("Auth Pin: {}", &pin).as_str())?;
+    let reply = ctx.send(|b| b.ephemeral(true).content(":wrench: Sending authentication email")).await?;
 
-    ctx.send(|b| b.ephemeral(true).content(":white_check_mark: Sucessfully sent authentication email")).await?;
+    match smtp::send_email(&email, "Discord Authentication", format!("Auth Pin: {}", &pin).as_str()) {
+        Ok(_) => { 
+            reply.edit(ctx, |b| b.ephemeral(true).content(":white_check_mark: Sucessfully sent aithentication email")).await?;
+         }
+        Err(e) => {
+            reply.edit(ctx, |b| b.ephemeral(true).content(format!(":x: Failed to send email, {}", e.to_string()))).await?;
+        }
+    }
 
     Ok(())
 }
@@ -119,7 +147,7 @@ pub async fn confirm(
         return Ok(());
     }
 
-    if pin != *real_pin {
+    if pin != real_pin.pin {
         util::error(&ctx, format!(":x: Incorrect pin!").as_str()).await?;
         return Ok(());
     }
@@ -135,16 +163,31 @@ pub async fn confirm(
     }
 
     match member.to_mut().add_role(ctx.discord(), &serenity::RoleId(role_id)).await {
-        Err(_) => {
-            util::error(&ctx, format!(":x: Failed to add verified role").as_str()).await?;
+        Err(e) => {
+            util::error(&ctx, format!(":x: Failed to add verified role, {}", e.to_string()).as_str()).await?;
             return Ok(());
         }
         Ok(_) => {}
     }
 
+    let start = SystemTime::now();
+    let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+    let now = since_the_epoch.as_secs() * 1000 + since_the_epoch.subsec_nanos() as u64 / 1_000_000;
+
+    database::auth::set_user(&guild_id, &user_id, &real_pin.email, &now)?;
+
     map.remove(&user_id).unwrap();
     ctx.send(|b| b.ephemeral(true).content(":white_check_mark: You have been sucessfully verified!")).await?;
 
+    Ok(())
+}
+
+#[poise::command(slash_command, subcommands("enable", "disable"))]
+pub async fn toggle(
+    _ctx: Context<'_>
+) -> Result<(), Error> {
     Ok(())
 }
 
@@ -178,6 +221,59 @@ pub async fn disable(
     database::guild::delete_setting(&guild_id, "verify_role")?;
 
     ctx.say(":white_check_mark: Sucessfully disabled verfiy commands").await?;
+
+    Ok(())
+
+}
+
+#[poise::command(slash_command, subcommands("email", "user"))]
+pub async fn purge(
+    _ctx: Context<'_>
+) -> Result<(), Error> {
+    Ok(())
+}
+
+#[poise::command(slash_command, required_permissions="MANAGE_GUILD")]
+pub async fn email(
+    ctx: Context<'_>,
+    #[description = "Email to purge"] email: String,
+) -> Result<(), Error> {
+
+    let guild_id = util::get_guild_id(&ctx).await?;
+
+    let row = database::auth::get_email(&guild_id, &email)?;
+    match row {
+        None => {
+            util::error(&ctx, ":x: Email doesn't exist in system").await?;
+        }
+        Some(data) => {
+            database::auth::delete_user(&guild_id, &data.user_id)?;
+            ctx.say(format!(":white_check_mark: Sucessfully purged {} from the database", &email)).await?;
+        }
+    }
+
+    Ok(())
+
+}
+
+#[poise::command(slash_command, required_permissions="MANAGE_GUILD")]
+pub async fn user(
+    ctx: Context<'_>,
+    #[description = "User to purge"] member: serenity::Member,
+) -> Result<(), Error> {
+
+    let guild_id = util::get_guild_id(&ctx).await?;
+
+    let row = database::auth::get_user(&guild_id, &member.user.id.0)?;
+    match row {
+        None => {
+            util::error(&ctx, ":x: User doesn't exist in system").await?;
+        }
+        Some(data) => {
+            database::auth::delete_user(&guild_id, &data.user_id)?;
+            ctx.say(format!(":white_check_mark: Sucessfully purged <@{}> from the database", &member.user.id.0)).await?;
+        }
+    }
 
     Ok(())
 
