@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::sync;
 use std::sync::atomic::AtomicBool;
 
@@ -91,6 +92,20 @@ pub async fn event_listener(
                     }
                 }
             }
+        },
+        poise::Event::GuildMemberAddition { new_member } => {
+            let guild_id = new_member.guild_id.0;
+            let role_option = database::guild::get_setting(&guild_id, "verify_role")?;
+            let role_id;
+            match role_option {
+                None => { return Ok(()); },
+                Some(id) => { role_id = id.parse::<u64>()?; }
+            }
+            let user_id = new_member.user.id.0;
+            if database::auth::get_user(&guild_id, &user_id)?.is_none() {
+                return Ok(());
+            };
+            new_member.to_owned().borrow_mut().add_role(&ctx, &serenity_prelude::RoleId(role_id)).await?;
         }
         _ => {}
     }
@@ -160,6 +175,7 @@ async fn main() {
         .intents(
             serenity_prelude::GatewayIntents::MESSAGE_CONTENT | 
             serenity_prelude::GatewayIntents::GUILD_MESSAGES | 
+            serenity_prelude::GatewayIntents::GUILD_MEMBERS | 
             serenity_prelude::GatewayIntents::non_privileged()
         ).user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { Ok(data) }));
 
