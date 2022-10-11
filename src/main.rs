@@ -25,6 +25,8 @@ pub struct Data {
     irc_channel_map: BiMap<u64, String>,
     irc_config: IrcConfig,
     irc_webhook_avatar: String,
+    verify_role: u64,
+    verify_emails: Vec<String>
 }
 
 use poise::serenity_prelude::{Activity, OnlineStatus};
@@ -95,12 +97,8 @@ pub async fn event_listener(
         },
         poise::Event::GuildMemberAddition { new_member } => {
             let guild_id = new_member.guild_id.0;
-            let role_option = database::guild::get_setting(&guild_id, "verify_role")?;
-            let role_id;
-            match role_option {
-                None => { return Ok(()); },
-                Some(id) => { role_id = id.parse::<u64>()?; }
-            }
+            let role_id = user_data.verify_role;
+            if role_id < 1 { return Ok(()); }
             let user_id = new_member.user.id.0;
             if database::auth::get_user(&guild_id, &user_id)?.is_none() {
                 return Ok(());
@@ -142,6 +140,8 @@ async fn main() {
         irc_channel_map: BiMap::new(),
         irc_config: IrcConfig::default(),
         irc_webhook_avatar: "".to_owned(),
+        verify_role: 0,
+        verify_emails: Vec::new()
     };
 
     database::init().expect("Failed to load database!");
@@ -150,6 +150,24 @@ async fn main() {
     // file, load IRC config into the user data object
     if !config["irc"].is_null() {
         irc_bridge::load_data_from_config(&mut data, &config["irc"]);
+    }
+
+    // If the `verify` object exists in the config 
+    // file, load verify config into the user data object
+    if !config["verify"].is_null() {
+        let verify = config["verify"].as_object().unwrap();
+        match verify["role"].as_u64() {
+            None => {},
+            Some(id) => {
+                data.verify_role = id;
+            }
+        }
+        match verify["allowed_emails"].as_array() {
+            None => {},
+            Some(array) => {
+                data.verify_emails = array.iter().map(|v| v.as_str() ).flatten().map(|v| v.to_string() ).collect::<Vec<String>>();
+            }
+        }
     }
 
     let framework = poise::Framework::builder()

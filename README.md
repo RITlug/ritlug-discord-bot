@@ -13,6 +13,8 @@ For the authentication system, the bot sends an email though a SMTP server. The 
 
 `irc.channels` is a map from IRC channel names to Discord channel IDs. `irc.use_tls` defaults to `true`. If `avatar` is omitted or set to the empty string, the default Discord avatar will be used.
 
+`verify.role` is the 19-digit role id for the verify role. `verify.allowed_emails` is a list of all the allowed domain names for verification in the server. If `verify` isnt specified, verification will be disabled.
+
 ```json
 {
     "irc": {
@@ -24,6 +26,12 @@ For the authentication system, the bot sends an email though a SMTP server. The 
             "#channel-1": 123456789012345678,
             "#channel-2": 628318530717957646
         }
+    },
+    "verify": {
+        "role": 1234567890123456789,
+        "allowed_emails": [
+            "rit.edu", "ritlug.com"
+        ]
     }
 }
 ```

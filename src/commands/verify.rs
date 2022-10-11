@@ -25,52 +25,52 @@ lazy_static! {
     };
 }
 
-#[poise::command(slash_command, subcommands("request", "toggle", "purge"))]
+#[poise::command(slash_command, subcommands("request", "confirm", "purge"))]
 pub async fn verify(
     _ctx: Context<'_>,
 ) -> Result<(), Error> {
     Ok(())
 }
 
-#[poise::command(slash_command, subcommands("code", "confirm"))]
-pub async fn request(
-    _ctx: Context<'_>
-) -> Result<(), Error> {
-    Ok(())
-}
-
 #[poise::command(slash_command)]
-pub async fn code(
+pub async fn request(
     ctx: Context<'_>,
     #[description = "Email to send pin to"] email: String
 ) -> Result<(), Error> {
 
+    // If the role id isnt set in config.json, verification isnt enabled
+    if ctx.data().verify_role < 1 {
+        util::error(&ctx, format!(":x: Verification isn't enabled on this server").as_str()).await?;
+        return Ok(());
+    }
+
+    // Check if email is a valid email
     let email_regex = Regex::new(r"^([a-z0-9_+]([a-z0-9_+.]*[a-z0-9_+])?)@([a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,6})").unwrap();
     if !email_regex.is_match(&email) {
         util::error(&ctx, format!(":x: Invalid email").as_str()).await?;
         return Ok(());
     }
 
-    let handle = "@rit.edu";
-    if email[email.len()-handle.len()..].to_string() != handle {
-        util::error(&ctx, format!(":x: Email must be a valid {} email", handle).as_str()).await?;
+    // Check if the given email's domain is accepted in the server
+    let handles = &ctx.data().verify_emails;
+    let mut equals = false;
+    for handle in handles {
+        if email[email.len()-handle.len()..].to_string().eq(handle) {
+            equals = true;
+            break;
+        }
+    }
+
+    // Error if email's domain is not accepted
+    if !equals {
+        util::error(&ctx, ":x: That email domain is not accepted in this server").await?;
         return Ok(());
     }
 
     let guild_id = util::get_guild_id(&ctx).await?;
-    let role_option = database::guild::get_setting(&guild_id, "verify_role")?;
-    let role_id;
+    let role_id = ctx.data().verify_role;
 
-    match role_option {
-        None => {
-            util::error(&ctx, format!(":x: Verification isn't enabled on this server").as_str()).await?;
-            return Ok(());
-        }
-        Some(role_str) => {
-            role_id = role_str.parse::<u64>()?;
-        }
-    }
-
+    // Get member object from guild
     let member_option = ctx.author_member().await;
     let member;
     match member_option {
@@ -81,6 +81,7 @@ pub async fn code(
         Some(m) => member = m
     }
 
+    // Error if the user has already verified in the past
     if member.roles.contains(&serenity::RoleId(role_id)) {
         util::error(&ctx, format!(":x: You are already verified on this server").as_str()).await?;
         return Ok(());
@@ -88,6 +89,7 @@ pub async fn code(
 
     let user_id = ctx.author().id.0;
 
+    // Error if the email has already been used to verifiy someone else in the past
     match database::auth::get_email(&guild_id, &email)? {
         None => {},
         Some(row) => {
@@ -103,13 +105,17 @@ pub async fn code(
     let copy = email.clone();
     map.insert(user_id, Auth{email: copy, pin});
 
+    // Notify that the email is being sent
     let reply = ctx.send(|b| b.ephemeral(true).content(":wrench: Sending authentication email")).await?;
 
+    // Attempt to send the authentication email with the pin
     match smtp::send_email(&email, "Discord Authentication", format!("Auth Pin: {}", &pin).as_str()) {
         Ok(_) => { 
+            // Email sent sucessfully
             reply.edit(ctx, |b| b.ephemeral(true).content(":white_check_mark: Sucessfully sent authentication email")).await?;
          }
         Err(e) => {
+            // Failed to send email, show error
             reply.edit(ctx, |b| b.ephemeral(true).content(format!(":x: Failed to send email, {}", e.to_string()))).await?;
         }
     }
@@ -123,20 +129,16 @@ pub async fn confirm(
     #[description = "Verify pin sent to your email"] pin: i32
 ) -> Result<(), Error> {
 
-    let guild_id = util::get_guild_id(&ctx).await?;
-    let role_option = database::guild::get_setting(&guild_id, "verify_role")?;
-    let role_id;
-
-    match role_option {
-        None => {
-            util::error(&ctx, format!(":x: Verification isn't enabled on this server").as_str()).await?;
-            return Ok(());
-        }
-        Some(role_str) => {
-            role_id = role_str.parse::<u64>()?;
-        }
+    // If the role id isnt set in config.json, verification isnt enabled
+    if ctx.data().verify_role < 1 {
+        util::error(&ctx, format!(":x: Verification isn't enabled on this server").as_str()).await?;
+        return Ok(());
     }
 
+    let guild_id = util::get_guild_id(&ctx).await?;
+    let role_id = ctx.data().verify_role;
+
+    // Check if the user who send the confirm request really has a request pending
     let mut map = MAP.lock().await;
     let user_id = ctx.author().id.0;
     let real_pin;
@@ -147,11 +149,13 @@ pub async fn confirm(
         return Ok(());
     }
 
+    // Error if the pin is incorrect
     if pin != real_pin.pin {
         util::error(&ctx, format!(":x: Incorrect pin!").as_str()).await?;
         return Ok(());
     }
 
+    // Error if unable to get member information
     let member_option = ctx.author_member().await;
     let mut member;
     match member_option {
@@ -162,6 +166,7 @@ pub async fn confirm(
         Some(m) => member = m
     }
 
+    // Attempty to add verify role to user, error if failed
     match member.to_mut().add_role(ctx.discord(), &serenity::RoleId(role_id)).await {
         Err(e) => {
             util::error(&ctx, format!(":x: Failed to add verified role, {}", e.to_string()).as_str()).await?;
@@ -170,60 +175,20 @@ pub async fn confirm(
         Ok(_) => {}
     }
 
+    // Get current time in miliseconds
     let start = SystemTime::now();
     let since_the_epoch = start
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
     let now = since_the_epoch.as_secs() * 1000 + since_the_epoch.subsec_nanos() as u64 / 1_000_000;
 
+    // Update database information
     database::auth::set_user(&guild_id, &user_id, &real_pin.email, &now)?;
 
     map.remove(&user_id).unwrap();
     ctx.send(|b| b.ephemeral(true).content(":white_check_mark: You have been sucessfully verified!")).await?;
 
     Ok(())
-}
-
-#[poise::command(slash_command, subcommands("enable", "disable"))]
-pub async fn toggle(
-    _ctx: Context<'_>
-) -> Result<(), Error> {
-    Ok(())
-}
-
-#[poise::command(slash_command, required_permissions="MANAGE_GUILD")]
-pub async fn enable(
-    ctx: Context<'_>,
-    #[description = "Verify role to set"] role: serenity::Role,
-) -> Result<(), Error> {
-
-    if role.name == "@everyone" || role.name == "@here" {
-        util::error(&ctx, ":x: Role is not allowed").await?;
-        return Ok(())
-    }
-    let guild_id = util::get_guild_id(&ctx).await?;
-
-    database::guild::set_setting(&guild_id, "verify_role", &format!("{}",&role.id.0))?;
-
-    ctx.say(format!(":white_check_mark: Sucessfully enabled verfiy commands! Verfiy role: <@&{}>", &role.id.0)).await?;
-
-    Ok(())
-
-}
-
-#[poise::command(slash_command, required_permissions="MANAGE_GUILD")]
-pub async fn disable(
-    ctx: Context<'_>
-) -> Result<(), Error> {
-
-    let guild_id = util::get_guild_id(&ctx).await?;
-
-    database::guild::delete_setting(&guild_id, "verify_role")?;
-
-    ctx.say(":white_check_mark: Sucessfully disabled verfiy commands").await?;
-
-    Ok(())
-
 }
 
 #[poise::command(slash_command, subcommands("email", "user"))]
