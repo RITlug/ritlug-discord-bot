@@ -181,6 +181,8 @@ async fn main() {
                 commands::roles(),
                 commands::verify(),
                 commands::bridge(),
+                commands::linux(),
+                commands::linuxresponse()
             ],
             listener: |ctx, event, framework, user_data| {
                 Box::pin(event_listener(
