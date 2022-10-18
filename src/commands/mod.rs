@@ -10,3 +10,6 @@ pub use roles::roles;
 
 mod verify;
 pub use verify::verify;
+
+mod bridge;
+pub use bridge::bridge;

@@ -75,7 +75,6 @@ pub async fn event_listener(
                         .unwrap_or_else(|| new_message.author.name.clone());
                     let mut content = new_message.content.clone();
                     for attachment in &new_message.attachments {
-                        println!("a {}", attachment.url);
                         content += "\nAttachment: ";
                         content += &attachment.url;
                     }
@@ -181,6 +180,7 @@ async fn main() {
                 commands::deleterolepage(),
                 commands::roles(),
                 commands::verify(),
+                commands::bridge(),
             ],
             listener: |ctx, event, framework, user_data| {
                 Box::pin(event_listener(
