@@ -44,6 +44,11 @@ pub async fn request(
         return Ok(());
     }
 
+    if email.len() > 320 {
+        util::error(&ctx, format!(":x: Email is too long").as_str()).await?;
+        return Ok(());
+    }
+
     email = email.to_lowercase();
 
     // Check if email is a valid email
