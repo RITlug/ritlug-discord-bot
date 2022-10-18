@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::sync;
 use std::sync::atomic::AtomicBool;
 
@@ -11,6 +12,7 @@ mod irc_bridge;
 mod commands;
 mod database;
 mod util;
+mod smtp;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
@@ -23,6 +25,8 @@ pub struct Data {
     irc_channel_map: BiMap<u64, String>,
     irc_config: IrcConfig,
     irc_webhook_avatar: String,
+    verify_role: u64,
+    verify_emails: Vec<String>
 }
 
 use poise::serenity_prelude::{Activity, OnlineStatus};
@@ -89,6 +93,16 @@ pub async fn event_listener(
                     }
                 }
             }
+        },
+        poise::Event::GuildMemberAddition { new_member } => {
+            let guild_id = new_member.guild_id.0;
+            let role_id = user_data.verify_role;
+            if role_id < 1 { return Ok(()); }
+            let user_id = new_member.user.id.0;
+            if database::auth::get_user(&guild_id, &user_id)?.is_none() {
+                return Ok(());
+            };
+            new_member.to_owned().borrow_mut().add_role(&ctx, &serenity_prelude::RoleId(role_id)).await?;
         }
         _ => {}
     }
@@ -125,6 +139,8 @@ async fn main() {
         irc_channel_map: BiMap::new(),
         irc_config: IrcConfig::default(),
         irc_webhook_avatar: "".to_owned(),
+        verify_role: 0,
+        verify_emails: Vec::new()
     };
 
     database::init().expect("Failed to load database!");
@@ -133,6 +149,24 @@ async fn main() {
     // file, load IRC config into the user data object
     if !config["irc"].is_null() {
         irc_bridge::load_data_from_config(&mut data, &config["irc"]);
+    }
+
+    // If the `verify` object exists in the config 
+    // file, load verify config into the user data object
+    if !config["verify"].is_null() {
+        let verify = config["verify"].as_object().unwrap();
+        match verify["role"].as_u64() {
+            None => {},
+            Some(id) => {
+                data.verify_role = id;
+            }
+        }
+        match verify["allowed_emails"].as_array() {
+            None => {},
+            Some(array) => {
+                data.verify_emails = array.iter().map(|v| v.as_str() ).flatten().map(|v| v.to_string() ).collect::<Vec<String>>();
+            }
+        }
     }
 
     let framework = poise::Framework::builder()
@@ -145,6 +179,7 @@ async fn main() {
                 commands::addrolepage(),
                 commands::deleterolepage(),
                 commands::roles(),
+                commands::verify(),
                 commands::bridge(),
             ],
             listener: |ctx, event, framework, user_data| {
@@ -158,6 +193,7 @@ async fn main() {
         .intents(
             serenity_prelude::GatewayIntents::MESSAGE_CONTENT | 
             serenity_prelude::GatewayIntents::GUILD_MESSAGES | 
+            serenity_prelude::GatewayIntents::GUILD_MEMBERS | 
             serenity_prelude::GatewayIntents::non_privileged()
         ).user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { Ok(data) }));
 

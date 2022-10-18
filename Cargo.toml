@@ -12,6 +12,10 @@ rusqlite = { version = "0.28.0", features = ["bundled"] }
 dotenv = "0.15"
 irc = { version = "0.15", features = ["ctcp", "tls-rust", "tokio-rustls"], default-features = false }
 bimap = "0.6"
+lettre = { version = "0.10.0-beta.2", features = ["smtp-transport", "tokio1-rustls-tls", "hostname", "r2d2", "builder"], default-features = false }
+lazy_static = "1.4.0"
+rand = "0.8.4"
+regex = "0.2.11"
 
 [dependencies.tokio]
 version = "1.0"
