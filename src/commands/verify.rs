@@ -35,7 +35,7 @@ pub async fn verify(
 #[poise::command(slash_command)]
 pub async fn request(
     ctx: Context<'_>,
-    #[description = "Email to send pin to"] email: String
+    #[description = "Email to send pin to"] mut email: String
 ) -> Result<(), Error> {
 
     // If the role id isnt set in config.json, verification isnt enabled
@@ -43,6 +43,8 @@ pub async fn request(
         util::error(&ctx, format!(":x: Verification isn't enabled on this server").as_str()).await?;
         return Ok(());
     }
+
+    email = email.to_lowercase();
 
     // Check if email is a valid email
     let email_regex = Regex::new(r"^([a-z0-9_+]([a-z0-9_+.]*[a-z0-9_+])?)@([a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,6})").unwrap();
@@ -54,15 +56,16 @@ pub async fn request(
     // Check if the given email's domain is accepted in the server
     let handles = &ctx.data().verify_emails;
     let mut equals = false;
+    let index = email.find("@").unwrap();
     for handle in handles {
-        if email[email.len()-handle.len()..].to_string().eq(handle) {
+        if email[index+1..].to_string().eq(handle) {
             equals = true;
             break;
         }
     }
 
     // Error if email's domain is not accepted
-    if !equals {
+    if !equals || email.find("+").is_some() {
         util::error(&ctx, ":x: That email domain is not accepted in this server").await?;
         return Ok(());
     }
@@ -214,6 +217,11 @@ pub async fn email(
         Some(data) => {
             database::auth::delete_user(&guild_id, &data.user_id)?;
             ctx.say(format!(":white_check_mark: Sucessfully purged {} from the database", &email)).await?;
+            if let Some(guild) = ctx.guild() {
+                if let Ok(mut member) = guild.member(ctx.discord(), data.user_id).await {
+                    let _ = member.remove_role(ctx.discord(), &serenity::RoleId(ctx.data().verify_role)).await;
+                }
+            }
         }
     }
 
@@ -237,6 +245,11 @@ pub async fn user(
         Some(data) => {
             database::auth::delete_user(&guild_id, &data.user_id)?;
             ctx.say(format!(":white_check_mark: Sucessfully purged <@{}> from the database", &member.user.id.0)).await?;
+            if let Some(guild) = ctx.guild() {
+                if let Ok(mut member) = guild.member(ctx.discord(), data.user_id).await {
+                    let _ = member.remove_role(ctx.discord(), &serenity::RoleId(ctx.data().verify_role)).await;
+                }
+            }
         }
     }
 
