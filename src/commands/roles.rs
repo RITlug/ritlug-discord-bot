@@ -24,7 +24,7 @@ pub async fn addrole(
     let mut json: serde_json::Value;
     match data {
       None => {
-        util::error(&ctx, format!(":x: Page {} does not exist", guild_id).as_str()).await?;
+        util::error(&ctx, format!(":x: Page {} does not exist", &page).as_str()).await?;
         return Ok(());
       },
       Some(x) => json = serde_json::from_str(x.as_str())?
