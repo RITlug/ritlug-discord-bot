@@ -110,7 +110,7 @@ pub async fn event_listener(
     Ok(())
 }
 
-#[poise::command(prefix_command)]
+#[poise::command(prefix_command, hide_in_help)]
 async fn register(ctx: Context<'_>) -> Result<(), Error> {
     poise::builtins::register_application_commands_buttons(ctx).await?;
     Ok(())
@@ -173,6 +173,7 @@ async fn main() {
         .options(poise::FrameworkOptions {
             commands: vec![
                 register(),
+                commands::help(),
                 commands::ping(),
                 commands::addrole(),
                 commands::deleterole(),
@@ -182,7 +183,7 @@ async fn main() {
                 commands::verify(),
                 commands::bridge(),
                 commands::linux(),
-                commands::linuxresponse()
+                commands::linuxresponse(),
             ],
             listener: |ctx, event, framework, user_data| {
                 Box::pin(event_listener(

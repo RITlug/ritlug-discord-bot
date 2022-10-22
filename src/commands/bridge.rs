@@ -1,3 +1,7 @@
+/// Show information about where this channel is bridged to.
+/// 
+/// "Bridging" a channel to somewhere else means that any messages sent within
+/// the channel are automatically sent to that place, and vice versa.
 #[poise::command(slash_command)]
 pub async fn bridge(ctx: crate::Context<'_>) -> Result<(), crate::Error> {
     let dc_channel = ctx.channel_id();
