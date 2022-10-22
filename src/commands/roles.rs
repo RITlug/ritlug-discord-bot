@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use poise::CreateReply;
 use poise::futures_util::StreamExt;
-use poise::serenity_prelude::{self as serenity, InteractionResponseType};
+use poise::serenity_prelude::{self as serenity, InteractionResponseType, MessageComponentInteraction, Member, User};
 use serde_json::json;
 
 use crate::{Context, Error};
@@ -140,81 +142,94 @@ pub async fn roles(
   }
 
   let page_number = 1;
-  let content = get_role_embed(&ctx, &guild_id, &page_number, &page_count)?;
+  let content = get_role_embed(&ctx, &guild_id, &page_number, &page_count, &ctx.author())?;
   let reply = ctx.send(|b| { b.clone_from(&content); return b; }).await?;
   let message = reply.message().await?;
   let mut collector = message.await_component_interactions(ctx.discord()).author_id(ctx.author().id).build();
 
   while let Some(interaction) = collector.next().await {
-    match interaction.data.custom_id.as_str() {
-      "previous" => {
-        let page_count = database::roles::get_page_amount(&guild_id)?.unwrap_or(0);
-        let mut page_number = interaction.message.embeds[0].footer.as_ref().unwrap().text[5..6].parse::<u64>().unwrap() - 1;
-        if page_number < 1 { page_number = page_count; }
-        if page_number > page_count { page_number = 1 }
-        let content = get_role_embed(&ctx, &guild_id, &page_number, &page_count)?;
-        interaction.create_interaction_response(
-          ctx.discord(), |b| b
-          .kind(InteractionResponseType::UpdateMessage)
-          .interaction_response_data(|b| b.set_embeds(content.embeds).set_components(content.components.unwrap()))
-        ).await?;
-      }
-      "next" => {
-        let page_count = database::roles::get_page_amount(&guild_id)?.unwrap_or(0);
-        let mut page_number = interaction.message.embeds[0].footer.as_ref().unwrap().text[5..6].parse::<u64>().unwrap() + 1;
-        if page_number < 1 { page_number = page_count; }
-        if page_number > page_count { page_number = 1 }
-        let content = get_role_embed(&ctx, &guild_id, &page_number, &page_count)?;
-        interaction.create_interaction_response(
-          ctx.discord(), |b| b
-          .kind(InteractionResponseType::UpdateMessage)
-          .interaction_response_data(|b| b.set_embeds(content.embeds).set_components(content.components.unwrap()))
-        ).await?;
-      }
-      "selection" => {
-        let id = interaction.data.values[0].as_str().parse::<u64>().ok();
-        match id {
-          None => {
-            interaction.create_interaction_response(ctx.discord(), |b| b
-                  .interaction_response_data(|b| b.ephemeral(true).content(":x: Page empty or invalid role"))).await?;
-          }
-          Some(x) => {
-            let lookup = ctx.guild().unwrap().roles;
-            let role_id = serenity::RoleId(x);
-            let role_option = lookup.get(&role_id);
-            match role_option {
-              None => {
-                interaction.create_interaction_response(ctx.discord(), |b| b
-                  .interaction_response_data(|b| b.ephemeral(true).content(":x: Role no longer exists on server"))).await?;
-              }
-              Some(role) => {
-                let mut member = interaction.as_ref().to_owned().member.unwrap();
-                if member.roles.contains(&role_id) {
-                  member.remove_role(ctx.discord(), &role_id).await?;
-                  interaction.create_interaction_response(ctx.discord(), |b| b
-                    .interaction_response_data(|b| b.ephemeral(true).content(format!(":white_check_mark: Sucessfully removed <@&{}>", role.id.0)))).await?;
-                } else {
-                  member.add_role(ctx.discord(), &role_id).await?;
-                  interaction.create_interaction_response(ctx.discord(), |b| b
-                    .interaction_response_data(|b| b.ephemeral(true).content(format!(":white_check_mark: Sucessfully added <@&{}>", role.id.0)))).await?;
-                }
-              }
-            }
-          }
-        }
-      }
-      "exit" => {
-        interaction.message.delete(ctx.discord()).await?;
-        return Ok(())
-      }
-      _ => {}
+    if let Err(err) = respond(&ctx, &interaction, &guild_id).await {
+      util::critical_error(&ctx, &err.to_string()).await?;
     }
   }
   
   Ok(())
 }
 
-fn get_role_embed<'a>(ctx: &'a Context<'a>, &guild_id: &'a u64, page_number: &'a u64, page_count: &'a u64) -> Result<CreateReply<'a>, Error> {
+async fn respond(ctx: &Context<'_>, interaction: &Arc<MessageComponentInteraction>, guild_id: &u64) -> Result<(), Error> {
+  match interaction.data.custom_id.as_str() {
+    "previous" => {
+      let page_count = database::roles::get_page_amount(guild_id)?.unwrap_or(0);
+      let mut page_number = interaction.message.embeds[0].footer.as_ref().unwrap().text[5..6].parse::<u64>().unwrap() - 1;
+      if page_number < 1 { page_number = page_count; }
+      if page_number > page_count { page_number = 1 }
+      let content = get_role_embed(ctx, guild_id, &page_number, &page_count, &ctx.author())?;
+      interaction.create_interaction_response(
+        ctx.discord(), |b| b
+        .kind(InteractionResponseType::UpdateMessage)
+        .interaction_response_data(|b| b.set_embeds(content.embeds).set_components(content.components.unwrap()))
+      ).await?;
+    }
+    "next" => {
+      let page_count = database::roles::get_page_amount(guild_id)?.unwrap_or(0);
+      let mut page_number = interaction.message.embeds[0].footer.as_ref().unwrap().text[5..6].parse::<u64>().unwrap() + 1;
+      if page_number < 1 { page_number = page_count; }
+      if page_number > page_count { page_number = 1 }
+      let content = get_role_embed(ctx, guild_id, &page_number, &page_count, &ctx.author())?;
+      interaction.create_interaction_response(
+        ctx.discord(), |b| b
+        .kind(InteractionResponseType::UpdateMessage)
+        .interaction_response_data(|b| b.set_embeds(content.embeds).set_components(content.components.unwrap()))
+      ).await?;
+    }
+    "selection" => {
+      let id = interaction.data.values[0].as_str().parse::<u64>().ok();
+      match id {
+        None => {
+          interaction.create_interaction_response(ctx.discord(), |b| b
+                .interaction_response_data(|b| b.ephemeral(true).content(":x: Page empty or invalid role"))).await?;
+        }
+        Some(x) => {
+          let lookup = ctx.guild().unwrap().roles;
+          let role_id = serenity::RoleId(x);
+          let role_option = lookup.get(&role_id);
+          match role_option {
+            None => {
+              interaction.create_interaction_response(ctx.discord(), |b| b
+                .interaction_response_data(|b| b.ephemeral(true).content(":x: Role no longer exists on server"))).await?;
+            }
+            Some(role) => {
+              let mut member = interaction.as_ref().to_owned().member.unwrap();
+              if member.roles.contains(&role_id) {
+                if let Err(err) = member.remove_role(ctx.discord(), &role_id).await {
+                  util::error(ctx, &err.to_string()).await?;
+                } else {
+                  interaction.create_interaction_response(ctx.discord(), |b| b
+                  .interaction_response_data(|b| b.ephemeral(true).content(format!(":white_check_mark: Sucessfully removed <@&{}>", role.id.0)))).await?;
+                }
+              } else {
+                if let Err(err) = member.add_role(ctx.discord(), &role_id).await {
+                  util::error(ctx, &err.to_string()).await?;
+                } else {
+                interaction.create_interaction_response(ctx.discord(), |b| b
+                  .interaction_response_data(|b| b.ephemeral(true).content(format!(":white_check_mark: Sucessfully added <@&{}>", role.id.0)))).await?;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    "exit" => {
+      interaction.message.delete(ctx.discord()).await?;
+      return Ok(())
+    }
+    _ => {}
+  }
+  Ok(())
+}
+
+fn get_role_embed<'a>(ctx: &'a Context<'a>, &guild_id: &'a u64, page_number: &'a u64, page_count: &'a u64, user: &User) -> Result<CreateReply<'a>, Error> {
 
   let binding = database::roles::get_page(&guild_id, &page_number)?.unwrap();
   let data = binding.as_str();
@@ -249,7 +264,7 @@ fn get_role_embed<'a>(ctx: &'a Context<'a>, &guild_id: &'a u64, page_number: &'a
   let reply = CreateReply::default()
     .embed(|b| b
       .author(|b| b
-        .name("Role Selection") 
+        .name(format!("Role Selection: {}", user.name)) 
       )
       .title(title)
       .description(description)
@@ -276,11 +291,11 @@ fn get_role_embed<'a>(ctx: &'a Context<'a>, &guild_id: &'a u64, page_number: &'a
       ).create_action_row(|b| b
         .create_select_menu(|b| b
           .custom_id("selection")
-          .placeholder("Select a role to add")
+          .placeholder("Select a role to toggle")
           .options(|b| b.set_options(options))
         )
       )
-    ).to_owned();
+    ).ephemeral(true).to_owned();
 
   Ok(reply)
 
