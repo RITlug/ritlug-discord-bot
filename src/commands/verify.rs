@@ -25,6 +25,7 @@ lazy_static! {
     };
 }
 
+/// Verify yourself using your email address.
 #[poise::command(slash_command, subcommands("request", "confirm", "purge"))]
 pub async fn verify(
     _ctx: Context<'_>,
@@ -32,6 +33,7 @@ pub async fn verify(
     Ok(())
 }
 
+/// Request to be verified. Specify the email you want to use as an argument.
 #[poise::command(slash_command)]
 pub async fn request(
     ctx: Context<'_>,
@@ -131,6 +133,7 @@ pub async fn request(
     Ok(())
 }
 
+/// Confirm your verification by providing the PIN sent to your email.
 #[poise::command(slash_command)]
 pub async fn confirm(
     ctx: Context<'_>,
@@ -199,6 +202,7 @@ pub async fn confirm(
     Ok(())
 }
 
+/// Purge verified users
 #[poise::command(slash_command, subcommands("email", "user"))]
 pub async fn purge(
     _ctx: Context<'_>

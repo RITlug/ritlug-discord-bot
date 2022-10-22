@@ -10,6 +10,10 @@ use crate::{Context, Error};
 use crate::database;
 use crate::util;
 
+/// Add a role to the role menu.
+/// 
+/// The first argument is the role to add, the second is the page number.
+/// Use `/deleterole` to remove a role.
 #[poise::command(slash_command, required_permissions = "MANAGE_ROLES")]
 pub async fn addrole(
     ctx: Context<'_>,
@@ -51,6 +55,9 @@ pub async fn addrole(
     Ok(())
 }
 
+/// Delete a role from the role menu.
+/// 
+/// The first argument is the role to delete, the second is the page number.
 #[poise::command(slash_command, required_permissions = "MANAGE_ROLES")]
 pub async fn deleterole(
     ctx: Context<'_>,
@@ -92,6 +99,10 @@ pub async fn deleterole(
     Ok(())
 }
 
+/// Add a page to the role menu.
+/// 
+/// The first argument is the page's title, the second is the page's
+/// description. Use `/deleterolepage` to delete a page.
 #[poise::command(slash_command, required_permissions = "MANAGE_ROLES")]
 pub async fn addrolepage(
     ctx: Context<'_>,
@@ -109,6 +120,9 @@ pub async fn addrolepage(
   Ok(())
 }
 
+/// Delete a page from the role menu.
+/// 
+/// The first and only argument is the page number to delete.
 #[poise::command(slash_command, required_permissions = "MANAGE_ROLES")]
 pub async fn deleterolepage(
     ctx: Context<'_>,
@@ -129,6 +143,12 @@ pub async fn deleterolepage(
   Ok(())
 }
 
+/// Open the role menu.
+/// 
+/// Use this menu to assign yourself roles. Use the Previous
+/// and Next buttons to select a page, and then use the
+/// dropdown menu to choose a role to toggle. Once you are
+/// done, you can press Exit to close the menu.
 #[poise::command(slash_command)]
 pub async fn roles(
     ctx: Context<'_>
