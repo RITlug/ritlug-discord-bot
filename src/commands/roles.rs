@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use poise::CreateReply;
 use poise::futures_util::StreamExt;
-use poise::serenity_prelude::{self as serenity, InteractionResponseType, MessageComponentInteraction, Member, User};
+use poise::serenity_prelude::{self as serenity, InteractionResponseType, MessageComponentInteraction, User};
 use serde_json::json;
 
 use crate::{Context, Error};
@@ -63,22 +63,7 @@ pub async fn deleterole(
     }
     let guild_id = util::get_guild_id(&ctx).await?;
     
-    let data = database::roles::get_page(&guild_id, &page)?;
-    let mut json: serde_json::Value;
-    match data {
-      None => {
-        util::error(&ctx, format!(":x: Page {} does not exist", &page).as_str()).await?;
-        return Ok(());
-      },
-      Some(x) => json = serde_json::from_str(x.as_str())?
-    }
-
-    let mut ids = json["roles"].as_array().unwrap_or(&Vec::new()).to_owned().iter().map(|value| value.as_u64()).flatten().collect::<Vec<_>>();
-
-    if !ids.contains(&role.id.0) {
-      util::error(&ctx, ":x: Role is already not on page").await?;
-      return Ok(())
-    }
+    let data = database::roles::get_page(&guild_id, &page)?;   println!("test");
 
     ids.retain(|e| e != &role.id.0);
 
@@ -220,10 +205,10 @@ async fn respond(ctx: &Context<'_>, interaction: &Arc<MessageComponentInteractio
         }
       }
     }
-    "exit" => {
-      interaction.message.delete(ctx.discord()).await?;
-      return Ok(())
-    }
+    // "exit" => {
+    //   interaction.message.delete(ctx.discord()).await?;
+    //   return Ok(())
+    // }
     _ => {}
   }
   Ok(())
@@ -283,11 +268,11 @@ fn get_role_embed<'a>(ctx: &'a Context<'a>, &guild_id: &'a u64, page_number: &'a
           .label("Next")
           .style(serenity::ButtonStyle::Secondary)
         )
-        .create_button(|b| b
-          .custom_id("exit")
-          .label("Exit")
-          .style(serenity::ButtonStyle::Danger)
-        )
+        // .create_button(|b| b
+        //   .custom_id("exit")
+        //   .label("Exit")
+        //   .style(serenity::ButtonStyle::Danger)
+        // )
       ).create_action_row(|b| b
         .create_select_menu(|b| b
           .custom_id("selection")
