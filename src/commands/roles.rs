@@ -63,7 +63,22 @@ pub async fn deleterole(
     }
     let guild_id = util::get_guild_id(&ctx).await?;
     
-    let data = database::roles::get_page(&guild_id, &page)?;   println!("test");
+    let data = database::roles::get_page(&guild_id, &page)?;
+    let mut json: serde_json::Value;
+    match data {
+      None => {
+        util::error(&ctx, format!(":x: Page {} does not exist", &page).as_str()).await?;
+        return Ok(());
+      },
+      Some(x) => json = serde_json::from_str(x.as_str())?
+    }
+
+    let mut ids = json["roles"].as_array().unwrap_or(&Vec::new()).to_owned().iter().map(|value| value.as_u64()).flatten().collect::<Vec<_>>();
+
+    if !ids.contains(&role.id.0) {
+      util::error(&ctx, ":x: Role is already not on page").await?;
+      return Ok(())
+    }
 
     ids.retain(|e| e != &role.id.0);
 
