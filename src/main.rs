@@ -175,6 +175,7 @@ async fn main() {
                 register(),
                 commands::help(),
                 commands::ping(),
+                commands::source(),
                 commands::addrole(),
                 commands::deleterole(),
                 commands::addrolepage(),
