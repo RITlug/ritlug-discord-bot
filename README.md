@@ -73,3 +73,9 @@ services:
     volumes:
     - ./data:/data
 ```
+
+### First time bot setup
+
+To have the bot set up the various slash commands that the bot supports, you need to run the registration command. This can be done by sending a message like `@bot-name register` to your server. You will then be prompted for how you would like to register the commands (globally or just in this guild).
+
+Once this is done, all the supported slash commands should work.
