@@ -1,3 +1,4 @@
+/// I'd just like to interject for a moment...
 #[poise::command(slash_command)]
 pub async fn linux(ctx: crate::Context<'_>) -> Result<(), crate::Error> {
   let text = concat!(
@@ -18,6 +19,7 @@ pub async fn linux(ctx: crate::Context<'_>) -> Result<(), crate::Error> {
   Ok(())
 }
 
+/// I use Alpine!
 #[poise::command(slash_command)]
 pub async fn linuxresponse(ctx: crate::Context<'_>) -> Result<(), crate::Error> {
   let text = concat!(

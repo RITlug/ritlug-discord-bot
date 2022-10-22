@@ -1,3 +1,6 @@
+mod help;
+pub use help::help;
+
 mod ping;
 pub use ping::ping;
 
