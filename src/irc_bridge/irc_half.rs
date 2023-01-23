@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use irc::client::prelude::*;
 use poise::{futures_util::StreamExt};
 use tokio::sync::mpsc;
@@ -11,6 +13,21 @@ pub async fn run_bridge(
     config: Config, 
     mut rx: mpsc::Receiver<BridgeMessage>, 
     tx: mpsc::Sender<BridgeMessage>,
+) -> Result<(), Error> {
+    loop {
+        if let Err(e) = run_bridge_inner(config.clone(), &mut rx, &tx).await {
+            println!("Error in IRC bridge: {}. Reconnecting...", e);
+        } else {
+            println!("Connection to IRC ended. Reconnecting...");
+        }
+        tokio::time::sleep(Duration::from_secs(10)).await;
+    }
+}
+
+pub async fn run_bridge_inner(
+    config: Config, 
+    rx: &mut mpsc::Receiver<BridgeMessage>, 
+    tx: &mpsc::Sender<BridgeMessage>,
 ) -> Result<(), Error> {
     let mut client = Client::from_config(config).await?;
     client.identify()?;
@@ -48,6 +65,5 @@ pub async fn run_bridge(
             }
         }
     }
-    println!("IRC bridge closed");
     Ok(()) 
 }
