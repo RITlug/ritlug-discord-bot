@@ -19,14 +19,7 @@ pub async fn run_bridge(
         
         if let Some(channel) = channel {
             let channel = ChannelId::from(*channel);
-            let mut webhooks = channel.webhooks(&ctx.http).await?;
-
-            // Create a new webhook for this channel if none exist
-            let webhook = if webhooks.is_empty() {
-                channel.create_webhook(&ctx.http, "IRC").await?
-            } else {
-                webhooks.swap_remove(0) // get 0th webhook without cloning
-            };
+            let webhook = channel.create_webhook(&ctx.http, "IRC").await?;
 
             // Send a message via the webhook
             webhook.execute(&ctx.http, false, |hook| {
