@@ -165,7 +165,7 @@ pub async fn roles(
   let content = get_role_embed(&ctx, &guild_id, &page_number, &page_count, &ctx.author())?;
   let reply = ctx.send(|b| { b.clone_from(&content); return b; }).await?;
   let message = reply.message().await?;
-  let mut collector = message.await_component_interactions(ctx.discord()).author_id(ctx.author().id).build();
+  let mut collector = message.await_component_interactions(ctx).author_id(ctx.author().id).build();
 
   while let Some(interaction) = collector.next().await {
     if let Err(err) = respond(&ctx, &interaction, &guild_id).await {
@@ -185,7 +185,7 @@ async fn respond(ctx: &Context<'_>, interaction: &Arc<MessageComponentInteractio
       if page_number > page_count { page_number = 1 }
       let content = get_role_embed(ctx, guild_id, &page_number, &page_count, &ctx.author())?;
       interaction.create_interaction_response(
-        ctx.discord(), |b| b
+        ctx, |b| b
         .kind(InteractionResponseType::UpdateMessage)
         .interaction_response_data(|b| b.set_embeds(content.embeds).set_components(content.components.unwrap()))
       ).await?;
@@ -197,7 +197,7 @@ async fn respond(ctx: &Context<'_>, interaction: &Arc<MessageComponentInteractio
       if page_number > page_count { page_number = 1 }
       let content = get_role_embed(ctx, guild_id, &page_number, &page_count, &ctx.author())?;
       interaction.create_interaction_response(
-        ctx.discord(), |b| b
+        ctx, |b| b
         .kind(InteractionResponseType::UpdateMessage)
         .interaction_response_data(|b| b.set_embeds(content.embeds).set_components(content.components.unwrap()))
       ).await?;
@@ -206,7 +206,7 @@ async fn respond(ctx: &Context<'_>, interaction: &Arc<MessageComponentInteractio
       let id = interaction.data.values[0].as_str().parse::<u64>().ok();
       match id {
         None => {
-          interaction.create_interaction_response(ctx.discord(), |b| b
+          interaction.create_interaction_response(ctx, |b| b
                 .interaction_response_data(|b| b.ephemeral(true).content(":x: Page empty or invalid role"))).await?;
         }
         Some(x) => {
@@ -215,23 +215,23 @@ async fn respond(ctx: &Context<'_>, interaction: &Arc<MessageComponentInteractio
           let role_option = lookup.get(&role_id);
           match role_option {
             None => {
-              interaction.create_interaction_response(ctx.discord(), |b| b
+              interaction.create_interaction_response(ctx, |b| b
                 .interaction_response_data(|b| b.ephemeral(true).content(":x: Role no longer exists on server"))).await?;
             }
             Some(role) => {
               let mut member = interaction.as_ref().to_owned().member.unwrap();
               if member.roles.contains(&role_id) {
-                if let Err(err) = member.remove_role(ctx.discord(), &role_id).await {
+                if let Err(err) = member.remove_role(ctx, &role_id).await {
                   util::error(ctx, &err.to_string()).await?;
                 } else {
-                  interaction.create_interaction_response(ctx.discord(), |b| b
+                  interaction.create_interaction_response(ctx, |b| b
                   .interaction_response_data(|b| b.ephemeral(true).content(format!(":white_check_mark: Sucessfully removed <@&{}>", role.id.0)))).await?;
                 }
               } else {
-                if let Err(err) = member.add_role(ctx.discord(), &role_id).await {
+                if let Err(err) = member.add_role(ctx, &role_id).await {
                   util::error(ctx, &err.to_string()).await?;
                 } else {
-                interaction.create_interaction_response(ctx.discord(), |b| b
+                interaction.create_interaction_response(ctx, |b| b
                   .interaction_response_data(|b| b.ephemeral(true).content(format!(":white_check_mark: Sucessfully added <@&{}>", role.id.0)))).await?;
                 }
               }
@@ -241,7 +241,7 @@ async fn respond(ctx: &Context<'_>, interaction: &Arc<MessageComponentInteractio
       }
     }
     // "exit" => {
-    //   interaction.message.delete(ctx.discord()).await?;
+    //   interaction.message.delete(ctx).await?;
     //   return Ok(())
     // }
     _ => {}

@@ -186,7 +186,7 @@ async fn main() {
                 commands::linux(),
                 commands::linuxresponse(),
             ],
-            listener: |ctx, event, framework, user_data| {
+            event_handler: |ctx, event, framework, user_data| {
                 Box::pin(event_listener(
                     ctx, event, framework, user_data,
                 ))
@@ -199,7 +199,7 @@ async fn main() {
             serenity_prelude::GatewayIntents::GUILD_MESSAGES | 
             serenity_prelude::GatewayIntents::GUILD_MEMBERS | 
             serenity_prelude::GatewayIntents::non_privileged()
-        ).user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { Ok(data) }));
+        ).setup(move |_ctx, _ready, _framework| Box::pin(async move { Ok(data) }));
 
     framework.run().await.unwrap();
 }
