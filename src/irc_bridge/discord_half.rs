@@ -1,7 +1,7 @@
 use std::{sync::Arc, collections::HashMap};
 
 use bimap::BiMap;
-use poise::serenity_prelude::{Context, ChannelId, Webhook};
+use poise::serenity_prelude::{Context, ChannelId, Webhook, ParseValue};
 
 use crate::Error;
 
@@ -45,6 +45,7 @@ pub async fn run_bridge(
                 hook.username(msg.author)
                     .content(msg.message)
                     .avatar_url(&avatar_url)
+                    .allowed_mentions(|am| am.parse(ParseValue::Users))
             }).await?;
         }
     }

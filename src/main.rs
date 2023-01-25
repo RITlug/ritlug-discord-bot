@@ -1,10 +1,11 @@
 use std::borrow::BorrowMut;
+use std::collections::HashMap;
 use std::sync;
 use std::sync::atomic::AtomicBool;
 
 use bimap::BiMap;
 use irc::client::prelude::Config as IrcConfig;
-use irc_bridge::BridgeMessage;
+use irc_bridge::{BridgeMessage, FlattenBridge};
 use poise::serenity_prelude::{self, Mutex, json};
 
 mod irc_bridge;
@@ -25,6 +26,7 @@ pub struct Data {
     irc_channel_map: BiMap<u64, String>,
     irc_config: IrcConfig,
     irc_webhook_avatar: String,
+    irc_flatten_bridges: HashMap<String, FlattenBridge>,
     verify_role: u64,
     verify_emails: Vec<String>
 }
@@ -58,6 +60,7 @@ pub async fn event_listener(
                     sync::Arc::new(ctx.clone()), 
                     user_data.irc_config.clone(), 
                     user_data.irc_channel_map.clone(),
+                    user_data.irc_flatten_bridges.clone(),
                     user_data.irc_webhook_avatar.clone(),
                 );
                 // Store tx so we can send to it when we get messages later
@@ -139,6 +142,7 @@ async fn main() {
         irc_channel_map: BiMap::new(),
         irc_config: IrcConfig::default(),
         irc_webhook_avatar: "".to_owned(),
+        irc_flatten_bridges: HashMap::new(),
         verify_role: 0,
         verify_emails: Vec::new()
     };

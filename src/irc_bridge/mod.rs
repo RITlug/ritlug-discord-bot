@@ -1,14 +1,21 @@
-use std::sync::Arc;
+use std::{sync::Arc, collections::HashMap};
 
 use bimap::BiMap;
 use irc::client::prelude::Config;
 use poise::serenity_prelude::{Context, json};
+use regex::Regex;
 use tokio::sync::mpsc;
 
 use crate::Data;
 
 mod irc_half;
 mod discord_half;
+
+#[derive(Clone, Debug)]
+pub struct FlattenBridge {
+    syntax: Regex,
+    suffix: String,
+}
 
 // A message crossing the bridge
 #[derive(Debug)]
@@ -48,6 +55,15 @@ pub fn load_data_from_config(data: &mut Data, irc_config: &json::Value) {
         .expect("config.json: `irc.nickname` must exist if `irc` exists")
         .to_owned()
     );
+    if irc_config["flatten_bridges"].is_object() {
+        for (k, v) in irc_config["flatten_bridges"].as_object().unwrap() {
+            let fb = FlattenBridge {
+                syntax: Regex::new(v["syntax"].as_str().unwrap()).unwrap(),
+                suffix: v["suffix"].as_str().unwrap().to_owned()
+            };
+            data.irc_flatten_bridges.insert(k.to_owned(), fb);
+        }
+    }
     // discord avatar URL
     data.irc_webhook_avatar = irc_config["avatar"].as_str().unwrap_or("").to_owned();
     // enable/disable TLS (default: enabled)
@@ -62,6 +78,7 @@ pub fn run(
     ctx: Arc<Context>, 
     irc_config: Config, 
     channel_mapping: BiMap<u64, String>,
+    flatten_bridges: HashMap<String, FlattenBridge>,
     avatar_url: String,
 ) -> Sender {
     // channel from discord to irc
@@ -69,7 +86,7 @@ pub fn run(
     // channel from irc to discord
     let (tx_id, rx_id) = mpsc::channel(64);
     tokio::spawn(async {
-        if let Err(e) = irc_half::run_bridge(irc_config, rx_di, tx_id).await {
+        if let Err(e) = irc_half::run_bridge(irc_config, rx_di, tx_id, flatten_bridges).await {
             println!("Error in IRC bridge: {}", e);
         }
     });

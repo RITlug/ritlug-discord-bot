@@ -8,14 +8,25 @@ edition = "2021"
 [dependencies]
 poise = "0.5.2"
 serde_json = "1.0"
-rusqlite = { version = "0.28.0", features = ["bundled"] }
 dotenv = "0.15.0"
-irc = { version = "0.15.0", features = ["ctcp", "tls-rust", "tokio-rustls"], default-features = false }
 bimap = "0.6.2"
-lettre = { version = "0.10.1", features = ["smtp-transport", "tokio1-rustls-tls", "hostname", "builder"], default-features = false }
 lazy_static = "1.4"
 rand = "0.8.5"
 regex = "1.7"
+
+[dependencies.rusqlite]
+version = "0.28.0"
+features = ["bundled"]
+
+[dependencies.irc]
+version = "0.15.0"
+features = ["tls-rust", "tokio-rustls"]
+default-features = false
+
+[dependencies.lettre]
+version = "0.10.1"
+features = ["smtp-transport", "tokio1-rustls-tls", "builder"]
+default-features = false 
 
 [dependencies.tokio]
 version = "1.24"
