@@ -1,7 +1,7 @@
-use std::sync::Arc;
+use std::{sync::Arc, collections::HashMap};
 
 use bimap::BiMap;
-use poise::serenity_prelude::{Context, ChannelId};
+use poise::serenity_prelude::{Context, ChannelId, Webhook};
 
 use crate::Error;
 
@@ -14,19 +14,31 @@ pub async fn run_bridge(
     channel_mapping: BiMap<u64, String>,
     avatar_url: String,
 ) -> Result<(), Error> {
+    let mut webhook_map: HashMap<u64, Webhook> = HashMap::new();
     while let Some(msg) = rx.recv().await {
         let channel = channel_mapping.get_by_right(&msg.channel);
         
-        if let Some(channel) = channel {
-            let channel = ChannelId::from(*channel);
-            let mut webhooks = channel.webhooks(&ctx.http).await?;
+        if let Some(chanid) = channel {
 
-            // Create a new webhook for this channel if none exist
-            let webhook = if webhooks.is_empty() {
-                channel.create_webhook(&ctx.http, "IRC").await?
-            } else {
-                webhooks.swap_remove(0) // get 0th webhook without cloning
-            };
+            if !webhook_map.contains_key(chanid) {
+                let channel = ChannelId::from(*chanid);
+                let webhooks = channel.webhooks(&ctx.http).await?;
+                let mut found_hook = false;
+                for webhook in webhooks {
+                    if webhook.token.is_none() {
+                        let _ = webhook.delete(&ctx.http).await;
+                    } else {
+                        found_hook = true;
+                        webhook_map.insert(*chanid, webhook);
+                    }
+                }
+                if !found_hook {
+                    let webhook = channel.create_webhook(&ctx.http, "IRC").await?;
+                    webhook_map.insert(*chanid, webhook);
+                }
+            }
+            
+            let webhook = webhook_map.get(chanid).unwrap();
 
             // Send a message via the webhook
             webhook.execute(&ctx.http, false, |hook| {

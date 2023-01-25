@@ -178,7 +178,7 @@ pub async fn confirm(
     }
 
     // Attempty to add verify role to user, error if failed
-    match member.to_mut().add_role(ctx.discord(), &serenity::RoleId(role_id)).await {
+    match member.to_mut().add_role(ctx, &serenity::RoleId(role_id)).await {
         Err(e) => {
             util::error(&ctx, format!(":x: Failed to add verified role, {}", e.to_string()).as_str()).await?;
             return Ok(());
@@ -227,8 +227,8 @@ pub async fn email(
             database::auth::delete_user(&guild_id, &data.user_id)?;
             ctx.say(format!(":white_check_mark: Sucessfully purged {} from the database", &email)).await?;
             if let Some(guild) = ctx.guild() {
-                if let Ok(mut member) = guild.member(ctx.discord(), data.user_id).await {
-                    let _ = member.remove_role(ctx.discord(), &serenity::RoleId(ctx.data().verify_role)).await;
+                if let Ok(mut member) = guild.member(ctx, data.user_id).await {
+                    let _ = member.remove_role(ctx, &serenity::RoleId(ctx.data().verify_role)).await;
                 }
             }
         }
@@ -255,8 +255,8 @@ pub async fn user(
             database::auth::delete_user(&guild_id, &data.user_id)?;
             ctx.say(format!(":white_check_mark: Sucessfully purged <@{}> from the database", &member.user.id.0)).await?;
             if let Some(guild) = ctx.guild() {
-                if let Ok(mut member) = guild.member(ctx.discord(), data.user_id).await {
-                    let _ = member.remove_role(ctx.discord(), &serenity::RoleId(ctx.data().verify_role)).await;
+                if let Ok(mut member) = guild.member(ctx, data.user_id).await {
+                    let _ = member.remove_role(ctx, &serenity::RoleId(ctx.data().verify_role)).await;
                 }
             }
         }
