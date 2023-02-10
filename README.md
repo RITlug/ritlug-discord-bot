@@ -88,6 +88,12 @@ To have the bot set up the various slash commands that the bot supports, you nee
 
 Once this is done, all the supported slash commands should work.
 
+## Usage
+
+Use `/help` to see a list of slash commands with usage descriptions.
+
+Some commands are also available via the IRC bridge, prefixed with `r!`. Use `r!help` for a list.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines
