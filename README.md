@@ -13,6 +13,8 @@ For the authentication system, the bot sends an email though a SMTP server. The 
 
 `irc.channels` is a map from IRC channel names to Discord channel IDs. `irc.use_tls` defaults to `true`. If `avatar` is omitted or set to the empty string, the default Discord avatar will be used.
 
+`irc.flatten_bridges` can be used when connecting to IRC channels that have other bridges connected. Keys correspond to IRC nicknames, values contain the keys `syntax` (a regex with two groups, the first matching the name and the second matching the message) and `suffix` (appended after the name).
+
 `verify.role` is the 19-digit role id for the verify role. `verify.allowed_emails` is a list of all the allowed domain names for verification in the server. If `verify` isnt specified, verification will be disabled.
 
 ```json
@@ -25,6 +27,12 @@ For the authentication system, the bot sends an email though a SMTP server. The 
         "channels": {
             "#channel-1": 123456789012345678,
             "#channel-2": 628318530717957646
+        },
+        "flatten_bridges": {
+            "another_bridge": {
+                "syntax": "^<([^>]*)> (.*)$",
+                "suffix": "another bridge"
+            }
         }
     },
     "verify": {
@@ -79,6 +87,12 @@ services:
 To have the bot set up the various slash commands that the bot supports, you need to run the registration command. This can be done by sending a message like `@bot-name register` to your server. You will then be prompted for how you would like to register the commands (globally or just in this guild).
 
 Once this is done, all the supported slash commands should work.
+
+## Usage
+
+Use `/help` to see a list of slash commands with usage descriptions.
+
+Some commands are also available via the IRC bridge, prefixed with `r!`. Use `r!help` for a list.
 
 ## Contributing
 

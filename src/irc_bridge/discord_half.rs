@@ -1,9 +1,9 @@
 use std::{sync::Arc, collections::HashMap};
 
 use bimap::BiMap;
-use poise::serenity_prelude::{Context, ChannelId, Webhook};
+use poise::serenity_prelude::{Context, ChannelId, Webhook, ParseValue};
 
-use crate::Error;
+use crate::{Error, database::avatar};
 
 use super::Receiver;
 
@@ -40,11 +40,14 @@ pub async fn run_bridge(
             
             let webhook = webhook_map.get(chanid).unwrap();
 
+            let avatar = avatar::get_avatar(&msg.author)?.unwrap_or_else(|| avatar_url.clone());
+
             // Send a message via the webhook
             webhook.execute(&ctx.http, false, |hook| {
                 hook.username(msg.author)
                     .content(msg.message)
-                    .avatar_url(&avatar_url)
+                    .avatar_url(&avatar)
+                    .allowed_mentions(|am| am.parse(ParseValue::Users))
             }).await?;
         }
     }
