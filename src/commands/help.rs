@@ -38,7 +38,7 @@ async fn help_general(ctx: Context<'_>) -> Result<(), Error> {
     
     ctx.send(|b|
         b.embed(|e| {
-            e.title("RITlug Bot Help");
+            e.title("RITwug Bot Help");
             e.description(body);
             e
         }).ephemeral(true)

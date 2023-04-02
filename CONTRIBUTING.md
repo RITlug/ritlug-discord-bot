@@ -1,4 +1,4 @@
-# Contributing to ritlug-discord-bot
+# Contributing to ritwug-discord-bot
 
 For the most part, try to follow the [Rust Style Guide](https://doc.rust-lang.org/beta/style-guide/index.html). 
 

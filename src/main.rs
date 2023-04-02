@@ -48,7 +48,7 @@ pub async fn event_listener(
         poise::Event::Ready { data_about_bot } => {
             println!("{} is connected!", data_about_bot.user.name);
 
-            let activity = Activity::playing("vim");
+            let activity = Activity::playing("Microsoft© Visual Studio™");
             let status = OnlineStatus::Online;
 
             ctx.set_presence(Some(activity), status).await;
@@ -144,7 +144,7 @@ async fn main() {
         irc_webhook_avatar: "".to_owned(),
         irc_flatten_bridges: HashMap::new(),
         verify_role: 0,
-        verify_emails: Vec::new()
+        verify_emails: Vec::new(),
     };
 
     database::init().expect("Failed to load database!");
